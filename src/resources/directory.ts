@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import { paginate, type PageResult } from "../pagination.js";
+import { paginateArray } from "../pagination.js";
 import type { DirectoryCompany, Contact } from "../schemas/directory.js";
 import type { SearchFilter } from "./base.js";
 
@@ -14,10 +14,14 @@ export class DirectoryResource {
     });
   }
 
+  /**
+   * Paginated search via POST Directory/Companies. Server returns a flat array per page,
+   * so we stop when a page is empty (or shorter than `pageSize`).
+   */
   search(options?: { filters?: SearchFilter[]; pageSize?: number }): AsyncGenerator<DirectoryCompany> {
     const { filters = [], pageSize = 20 } = options ?? {};
-    return paginate(pageSize, (pSize, pNum) =>
-      this.http.post<PageResult<DirectoryCompany>>("Directory/Companies", { filters }, {
+    return paginateArray(pageSize, (pSize, pNum) =>
+      this.http.post<DirectoryCompany[]>("Directory/Companies", { filters }, {
         pageSize: pSize, pageNumber: pNum,
       }),
     );
@@ -37,8 +41,8 @@ export class DirectoryResource {
 
   contactList(directoryId: string, options?: { pageSize?: number }): AsyncGenerator<Contact> {
     const pageSize = options?.pageSize ?? 20;
-    return paginate(pageSize, (pSize, pNum) =>
-      this.http.get<PageResult<Contact>>("Directory/Contacts", {
+    return paginateArray(pageSize, (pSize, pNum) =>
+      this.http.get<Contact[]>("Directory/Contacts", {
         directoryId, pageSize: pSize, pageNumber: pNum,
       }),
     );

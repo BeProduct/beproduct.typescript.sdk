@@ -2,7 +2,7 @@ export { BeProduct, type BeProductConfig } from "./client.js";
 export { BeProductError, BeProductThrottleError, BeProductValidationError } from "./errors.js";
 export { HttpClient, type RateLimitState, type FileInput } from "./http.js";
 export { OAuth2TokenManager, type TokenManagerConfig } from "./auth.js";
-export { paginate, collectAll, type PageResult } from "./pagination.js";
+export { paginate, paginateArray, collectAll, type PageResult } from "./pagination.js";
 export { parseHeader, parseStyle, parseMaterial, parseAppList, dictToFilters } from "./helpers.js";
 
 // Schemas

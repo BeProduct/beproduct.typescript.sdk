@@ -26,6 +26,25 @@ export async function* paginate<T>(
   }
 }
 
+/**
+ * Pagination variant for endpoints that return a flat array rather than `{ result, total }`.
+ * Continues until an empty page is returned, or the batch is smaller than `pageSize`.
+ * Used by `Directory/Companies` and `Directory/Contacts` (they return `T[]` directly).
+ */
+export async function* paginateArray<T>(
+  pageSize: number,
+  fetchPage: (pageSize: number, pageNumber: number) => Promise<T[]>,
+): AsyncGenerator<T> {
+  let pageNumber = 0;
+  while (true) {
+    const batch = await fetchPage(pageSize, pageNumber);
+    if (!batch || batch.length === 0) return;
+    for (const item of batch) yield item;
+    if (batch.length < pageSize) return;
+    pageNumber++;
+  }
+}
+
 export async function collectAll<T>(gen: AsyncGenerator<T>): Promise<T[]> {
   const items: T[] = [];
   for await (const item of gen) {
