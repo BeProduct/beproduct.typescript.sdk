@@ -21,6 +21,26 @@ export interface FileInput {
 
 const FALLBACK_BACKOFF = [1, 3, 5, 15, 30];
 
+/**
+ * Walk the `cause` chain on a fetch error and produce a readable summary.
+ * undici's `TypeError("fetch failed")` carries the real cause (system error
+ * code like ECONNRESET / EAI_AGAIN / UND_ERR_SOCKET) inside `error.cause`.
+ */
+function describeNetworkError(err: unknown): string {
+  const parts: string[] = [];
+  let current: unknown = err;
+  let depth = 0;
+  while (current && depth < 5) {
+    const e = current as { name?: string; message?: string; code?: string; cause?: unknown };
+    const tag = e.code ? `${e.code}` : e.name ?? "Error";
+    parts.push(`${tag}${e.message ? ": " + e.message : ""}`);
+    if (!e.cause || e.cause === current) break;
+    current = e.cause;
+    depth++;
+  }
+  return parts.join(" → ");
+}
+
 export class HttpClient {
   rateLimitState: RateLimitState | null = null;
 
@@ -143,6 +163,11 @@ export class HttpClient {
   ): Promise<T> {
     const fullUrl = this.buildUrl(url, params);
 
+    const MAX_NETWORK_RETRIES = 3;
+    const TRANSIENT_HTTP_STATUS = new Set([502, 503, 504]);
+    let networkAttempts = 0;
+    let httpRetries = 0;
+
     for (let attempt = 0; ; attempt++) {
       await this.preemptiveThrottle();
 
@@ -153,11 +178,32 @@ export class HttpClient {
         ...this.additionalHeaders,
       };
 
-      const res = await fetch(fullUrl, {
-        method,
-        headers,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
-      });
+      let res: Response;
+      try {
+        res = await fetch(fullUrl, {
+          method,
+          headers,
+          body: body !== undefined ? JSON.stringify(body) : undefined,
+        });
+      } catch (err) {
+        // undici throws TypeError("fetch failed") for transport-layer errors
+        // (DNS, ECONNRESET, socket drop, TLS, read timeout). Retry a handful
+        // of times with exponential backoff; on final failure surface the
+        // cause chain so the run-detail page tells the operator what
+        // actually died instead of just "fetch failed".
+        if (networkAttempts < MAX_NETWORK_RETRIES) {
+          networkAttempts++;
+          const delayMs = 500 * Math.pow(2, networkAttempts - 1); // 500, 1000, 2000
+          await new Promise((r) => setTimeout(r, delayMs));
+          continue;
+        }
+        throw new BeProductError(
+          `network error after ${MAX_NETWORK_RETRIES + 1} attempts: ${describeNetworkError(err)}`,
+          0,
+          fullUrl,
+          err instanceof Error ? err.stack ?? err.message : String(err),
+        );
+      }
 
       this.updateRateLimitState(res.headers);
 
@@ -166,6 +212,15 @@ export class HttpClient {
       }
 
       if (!res.ok) {
+        // 5xx gateway errors are typically transient on the BeProduct side.
+        // Retry up to MAX_NETWORK_RETRIES with the same backoff schedule so
+        // the operator doesn't see a single 502 as a hard failure.
+        if (TRANSIENT_HTTP_STATUS.has(res.status) && httpRetries < MAX_NETWORK_RETRIES) {
+          httpRetries++;
+          const delayMs = 500 * Math.pow(2, httpRetries - 1);
+          await new Promise((r) => setTimeout(r, delayMs));
+          continue;
+        }
         const text = await res.text();
         if (res.status === 400) {
           throw new BeProductValidationError(fullUrl, text);
