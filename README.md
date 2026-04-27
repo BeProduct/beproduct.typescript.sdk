@@ -1,4 +1,4 @@
-# `beproduct` — TypeScript SDK for the BeProduct PLM Public API
+# BeProduct TypeScript SDK for the BeProduct PLM Public API
 
 Typed, ESM-first client for the [BeProduct Public API](https://developers.beproduct.com).
 Wraps the OAuth2 refresh-token flow, paginated endpoints, schema parsing, and
