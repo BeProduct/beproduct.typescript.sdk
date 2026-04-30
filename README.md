@@ -6,8 +6,8 @@ the long tail of resource-specific helpers (BOM, colorways, data tables,
 sample requests, tracking plans, …).
 
 > **Status:** internal — distributed via workspace path / private registry.
-> Used in production by [`sidekick.typescript`](../sidekick.typescript) and
-> [`dataflow-typescript`](../dataflow-typescript).
+> Used in production by [`beproduct.dataflow.etl`](../beproduct.dataflow.etl) and
+> [`beproduct.dataflow.app`](../beproduct.dataflow.app).
 
 ---
 
@@ -15,7 +15,7 @@ sample requests, tracking plans, …).
 
 ```bash
 # in a sibling repo (workspace setup)
-"beproduct": "file:../beproduct.sdk"
+"beproduct": "file:../beproduct.typescript.sdk"
 
 # or via internal npm registry
 npm install beproduct
@@ -255,7 +255,7 @@ await bp.raw.delete(`Style/${headerId}`);
 The 4th argument to `post()` (and 2nd to `get()`) is **always the query
 string**. Body fields go in the 3rd position. Mixing those up is the most
 common mistake — see the comment in
-`sidekick.typescript/src/modules/sync-apps.ts` where `folder=Material` had
+`beproduct.dataflow.etl/src/modules/sync-apps.ts` where `folder=Material` had
 to be moved out of the body before BeProduct started returning material
 app data.
 
