@@ -22,6 +22,11 @@ export async function* paginate<T>(
     }
 
     if (processed >= total) break;
+    // Safety: if `total` says more results exist but the page came back empty,
+    // the server is misreporting. Without this guard we'd loop forever — seen
+    // on broken tracking views that return `{result:[],total:N}` for every
+    // page. Better to stop short than to hammer a broken endpoint.
+    if (page.result.length === 0) break;
     pageNumber++;
   }
 }

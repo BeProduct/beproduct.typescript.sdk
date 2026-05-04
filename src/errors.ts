@@ -4,6 +4,8 @@ export class BeProductError extends Error {
     public readonly statusCode: number,
     public readonly url: string,
     public readonly responseBody?: string,
+    public readonly method?: string,
+    public readonly requestBody?: string,
   ) {
     super(message);
     this.name = "BeProductError";
@@ -27,8 +29,8 @@ export class BeProductThrottleError extends BeProductError {
 }
 
 export class BeProductValidationError extends BeProductError {
-  constructor(url: string, responseBody?: string) {
-    super("Validation error", 400, url, responseBody);
+  constructor(url: string, responseBody?: string, method?: string, requestBody?: string) {
+    super("Validation error", 400, url, responseBody, method, requestBody);
     this.name = "BeProductValidationError";
   }
 }

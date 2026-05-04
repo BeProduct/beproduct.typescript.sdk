@@ -162,6 +162,10 @@ export class HttpClient {
     params?: Record<string, string | number | boolean | undefined>,
   ): Promise<T> {
     const fullUrl = this.buildUrl(url, params);
+    // Snapshot the request body once so we can attach it to any thrown error
+    // — operators replay failed calls from the run-detail logs and need the
+    // exact (method, url, body) tuple to reproduce against curl/Postman.
+    const requestBodyStr = body !== undefined ? JSON.stringify(body) : undefined;
 
     const MAX_NETWORK_RETRIES = 3;
     const TRANSIENT_HTTP_STATUS = new Set([502, 503, 504]);
@@ -183,7 +187,7 @@ export class HttpClient {
         res = await fetch(fullUrl, {
           method,
           headers,
-          body: body !== undefined ? JSON.stringify(body) : undefined,
+          body: requestBodyStr,
         });
       } catch (err) {
         // undici throws TypeError("fetch failed") for transport-layer errors
@@ -202,6 +206,8 @@ export class HttpClient {
           0,
           fullUrl,
           err instanceof Error ? err.stack ?? err.message : String(err),
+          method,
+          requestBodyStr,
         );
       }
 
@@ -223,17 +229,49 @@ export class HttpClient {
         }
         const text = await res.text();
         if (res.status === 400) {
-          throw new BeProductValidationError(fullUrl, text);
+          throw new BeProductValidationError(fullUrl, text, method, requestBodyStr);
         }
         throw new BeProductError(
           `API error ${res.status}: ${text}`,
           res.status,
           fullUrl,
           text,
+          method,
+          requestBodyStr,
         );
       }
 
-      return (await res.json()) as T;
+      // 200: API contract is JSON. If the chunked stream gets reset mid-read
+      // undici raises `TypeError("terminated")` — treat that the same as a
+      // transport-layer error and retry. We don't try to salvage a partial
+      // body for a 200 response: it isn't an authoritative payload, and
+      // partials that happen to parse (e.g. `{"result":[]}` missing `total`)
+      // can silently break pagination.
+      try {
+        return (await res.json()) as T;
+      } catch (err) {
+        if (networkAttempts < MAX_NETWORK_RETRIES) {
+          networkAttempts++;
+          const delayMs = 500 * Math.pow(2, networkAttempts - 1);
+          if (process.env.BP_HTTP_DEBUG) {
+            const cl = res.headers.get("content-length");
+            const enc = res.headers.get("transfer-encoding");
+            const conn = res.headers.get("connection");
+            // eslint-disable-next-line no-console
+            console.error(`[bp-http] body-read fail attempt ${networkAttempts} ${fullUrl} status=${res.status} cl=${cl} te=${enc} conn=${conn} err=${describeNetworkError(err)}`);
+          }
+          await new Promise((r) => setTimeout(r, delayMs));
+          continue;
+        }
+        throw new BeProductError(
+          `body read error after ${MAX_NETWORK_RETRIES + 1} attempts: ${describeNetworkError(err)}`,
+          res.status,
+          fullUrl,
+          undefined, // no authoritative body for a reset 200 response
+          method,
+          requestBodyStr,
+        );
+      }
     }
   }
 
