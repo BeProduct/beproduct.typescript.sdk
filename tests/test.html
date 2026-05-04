@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BeProduct SDK — browser demo</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    max-width: 880px;
+    margin: 24px auto;
+    padding: 0 16px;
+  }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  p.lede { color: #666; margin: 0 0 20px; }
+  fieldset { border: 1px solid #ccc; border-radius: 6px; padding: 12px 16px 16px; margin-bottom: 16px; }
+  legend { padding: 0 6px; color: #444; font-weight: 600; }
+  label { display: block; margin: 8px 0 4px; font-weight: 600; }
+  input[type=text], input[type=password] {
+    width: 100%; padding: 6px 8px; box-sizing: border-box;
+    border: 1px solid #bbb; border-radius: 4px; font: inherit;
+  }
+  button {
+    margin-top: 12px; padding: 8px 14px; font: inherit;
+    background: #1a73e8; color: #fff; border: 0; border-radius: 4px; cursor: pointer;
+  }
+  button:disabled { background: #999; cursor: wait; }
+  pre {
+    background: #f6f8fa; border: 1px solid #ddd; border-radius: 4px;
+    padding: 10px; overflow-x: auto; font-size: 12px; line-height: 1.4;
+    max-height: 360px; overflow-y: auto;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ok { color: #007700; }
+  .err { color: #b00020; }
+  .hint { color: #666; font-size: 12px; margin: 6px 0 0; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #111; color: #ddd; }
+    fieldset, input[type=text], input[type=password] { background: #1c1c1c; border-color: #333; color: #ddd; }
+    pre { background: #1c1c1c; border-color: #333; color: #ddd; }
+    p.lede, .hint { color: #999; }
+  }
+</style>
+</head>
+<body>
+
+<h1>BeProduct SDK — browser demo</h1>
+<p class="lede">
+  Loads <code>dist/index.js</code> via an import map, builds a <code>BeProduct</code>
+  client with the access token below, and pulls the first 10 styles and first 10
+  materials from your tenant. Pure browser — no backend.
+</p>
+
+<fieldset>
+  <legend>Credentials</legend>
+  <div class="row">
+    <div>
+      <label for="token">Access token</label>
+      <input type="password" id="token" autocomplete="off" placeholder="eyJ0eXAi…" />
+      <p class="hint">Paste a short-lived bearer JWT minted server-side. Never put a clientSecret here.</p>
+    </div>
+    <div>
+      <label for="domain">Company domain</label>
+      <input type="text" id="domain" placeholder="bebrands" />
+      <p class="hint">Tenant slug from your BeProduct subdomain.</p>
+    </div>
+  </div>
+  <button id="run">Run demo</button>
+</fieldset>
+
+<fieldset>
+  <legend>Output</legend>
+  <pre id="out">Press “Run demo”…</pre>
+</fieldset>
+
+<script type="importmap">
+{
+  "imports": {
+    "beproduct": "../dist/index.js",
+    "zod": "https://esm.sh/zod@4"
+  }
+}
+</script>
+
+<script type="module">
+import { BeProduct, BeProductError } from "beproduct";
+
+const $token = document.getElementById("token");
+const $domain = document.getElementById("domain");
+const $run = document.getElementById("run");
+const $out = document.getElementById("out");
+
+// Persist field values across reloads so you don't paste the token twice.
+const KEY = "bp-sdk-demo";
+try {
+  const saved = JSON.parse(sessionStorage.getItem(KEY) ?? "{}");
+  if (saved.domain) $domain.value = saved.domain;
+  // Token deliberately not persisted — sensitive.
+} catch {}
+
+function log(msg, cls) {
+  const span = document.createElement("span");
+  if (cls) span.className = cls;
+  span.textContent = msg + "\n";
+  $out.appendChild(span);
+  $out.scrollTop = $out.scrollHeight;
+}
+function clear() { $out.textContent = ""; }
+
+async function fetchFirst(iterator, n) {
+  const out = [];
+  for await (const item of iterator) {
+    out.push(item);
+    if (out.length >= n) break;
+  }
+  return out;
+}
+
+async function run() {
+  const accessToken = $token.value.trim();
+  const companyDomain = $domain.value.trim();
+  if (!accessToken || !companyDomain) {
+    clear();
+    log("Both fields are required.", "err");
+    return;
+  }
+  sessionStorage.setItem(KEY, JSON.stringify({ domain: companyDomain }));
+
+  $run.disabled = true;
+  clear();
+  log(`▶ tenant=${companyDomain}`);
+
+  try {
+    const bp = new BeProduct({ accessToken, companyDomain });
+
+    log("\n— first 10 styles —");
+    const styles = await fetchFirst(bp.style.list({ pageSize: 10 }), 10);
+    log(`got ${styles.length} styles`, "ok");
+    for (const s of styles) {
+      log(`  ${s.id?.slice?.(0, 8)}  ${s.headerNumber ?? ""}  ${s.headerName ?? ""}`);
+    }
+
+    log("\n— first 10 materials —");
+    const materials = await fetchFirst(bp.material.list({ pageSize: 10 }), 10);
+    log(`got ${materials.length} materials`, "ok");
+    for (const m of materials) {
+      log(`  ${m.id?.slice?.(0, 8)}  ${m.headerNumber ?? ""}  ${m.headerName ?? ""}`);
+    }
+
+    log("\n✓ done", "ok");
+  } catch (err) {
+    if (err instanceof BeProductError) {
+      log(`\n✗ ${err.name}: ${err.message}`, "err");
+      log(`  status=${err.statusCode}`);
+      log(`  url=${err.url}`);
+      if (err.responseBody) log(`  body=${err.responseBody.slice(0, 400)}`);
+    } else {
+      log(`\n✗ ${err?.name ?? "Error"}: ${err?.message ?? String(err)}`, "err");
+      if (err?.stack) log(err.stack);
+    }
+  } finally {
+    $run.disabled = false;
+  }
+}
+
+$run.addEventListener("click", run);
+</script>
+
+</body>
+</html>
