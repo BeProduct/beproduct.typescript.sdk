@@ -37,21 +37,50 @@ multipart fields differ. Common ones:
 
 | Method | What it uploads |
 |---|---|
+| `bp.style.upload(headerId, file, position?)` | The style attribute image — see [Attribute images](#attribute-images-frontsideback) below |
+| `bp.material.upload(headerId, file, position?)` | The material attribute image (`position`: `"main"` \| `"detail"`) |
 | `bp.style.colorwayUpload(headerId, colorwayId, file)` | A swatch image for a colorway |
 | `bp.material.colorwayUpload(headerId, file, { colorwayId })` | A swatch image for a material colorway |
 | `bp.style.artboardVersionUpload(headerId, file)` | A new artboard version |
-| `bp.style.turntableUpload(...)` | Style turntable (3D) assets |
+| `bp.style.turntableUpload(headerId, file, options?)` | Style turntable (3D) assets |
 | `bp.style.style3dWorkingFileUpload(...)` / `bp.style.style3dPreviewUpload(...)` | 3D working file / preview render |
 | `bp.material.material3dAssetUpload(...)` / `material3dPreviewUpload` / `material3dTextureUpload` | Material 3D assets |
 | `bp.image.imageVersionUpload(headerId, file)` | New image version |
 | `bp.block.sizeClass3dAssetUpload(headerId, sizeClass, file)` | Block 3D asset per size class |
 | `bp.style.appAttachmentsUpload(headerId, appId, file)` (and `.material`, etc.) | Attach file to an app page |
-| `bp.style.appListUpload(headerId, appId, listItemId, field, file)` | Image inside a list-row |
-| `bp.style.appImageFormUpload(headerId, appId, field, file)` | Image inside a form field |
+| `bp.style.appListUpload(headerId, appId, listItemId, file)` | Image inside a list-row (List / List-Form / List-Grid app) |
+| `bp.style.appImageFormUpload(headerId, appId, file)` | Image inside an ImagesForm app |
+| `bp.style.appImageGridUpload(headerId, appId, file)` | Image inside an ImagesGrid app (same endpoint as the form variant) |
 | `bp.inbox.messageAttachmentsUpload(messageId, file)` | Attach file to an inbox message |
 
 All return either a `string | null` image id (for entity-level uploads
 that produce a tracked image) or `unknown` (for attachments that don't).
+
+## Attribute images (front/side/back)
+
+`bp.style.upload` / `bp.material.upload` set the header's **attribute
+image** — the picture you see on the style/material header itself. The
+optional third argument picks the slot; omit it to upload the default
+(front, for styles) image.
+
+```ts
+// Style — front / side / back are the three views
+await bp.style.upload(headerId, { filepath: "/front.png" }, "front");
+await bp.style.upload(headerId, { filepath: "/side.png" },  "side");
+await bp.style.upload(headerId, { filepath: "/back.png" },  "back");
+
+// no position → default upload
+await bp.style.upload(headerId, { fileUrl: "https://cdn/render.png" });
+
+// Material — the slots are 'main' and 'detail'
+await bp.material.upload(headerId, { filepath: "/swatch.png" }, "main");
+```
+
+The `position` argument is **typed per entity** — `StyleImagePosition`
+(`"front" | "side" | "back"`) and `MaterialImagePosition` (`"main" |
+"detail"`) — so an invalid slot is a compile error, not a runtime 400.
+Like every attribute-image upload it returns an image id that you then
+poll (see [below](#the-async-processing-dance)).
 
 ## The async-processing dance
 

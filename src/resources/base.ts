@@ -68,6 +68,31 @@ export abstract class EntityResource {
     return this.http.get(`${this.entityType}/Header/${headerId}`);
   }
 
+  /**
+   * Look up a header by its human-facing header **number** (e.g. "T-101")
+   * rather than its GUID. Resolves to the first match, or `null` if none.
+   *
+   * Convenience wrapper over {@link list} with a `header_number` Eq filter.
+   * Pass `folderId` to scope the search to a single folder.
+   *
+   * @example
+   *   const style = await client.style.getByNumber("T-101");
+   *   if (style) console.log(style.id);
+   */
+  async getByNumber(
+    headerNumber: string,
+    options: { folderId?: string } = {},
+  ): Promise<Record<string, unknown> | null> {
+    for await (const header of this.list({
+      folderId: options.folderId,
+      filters: [{ field: "header_number", operator: "Eq", value: headerNumber }],
+      pageSize: 1,
+    })) {
+      return header;
+    }
+    return null;
+  }
+
   async deleteHeader(headerId: string): Promise<unknown> {
     // Python SDK uses GET for delete (API quirk)
     return this.http.get(`${this.entityType}/Header/Delete/${headerId}`);
@@ -236,6 +261,19 @@ export abstract class EntityResource {
       file,
       { [`${key}Id`]: headerId, pageId: appId },
     );
+  }
+
+  /**
+   * Upload an image into an **ImagesGrid** app. The underlying endpoint is
+   * shared with {@link appImageFormUpload} (ImagesForm) — this is a named
+   * alias so call sites read against the app type they're targeting.
+   */
+  async appImageGridUpload(
+    headerId: string,
+    appId: string,
+    file: FileInput,
+  ): Promise<string | null> {
+    return this.appImageFormUpload(headerId, appId, file);
   }
 
   async uploadStatus(

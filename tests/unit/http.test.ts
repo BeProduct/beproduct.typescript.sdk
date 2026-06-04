@@ -29,6 +29,7 @@ function mockFetch(response: Partial<Response>) {
 describe("HttpClient", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it("builds correct URL with params", async () => {
@@ -103,6 +104,39 @@ describe("HttpClient", () => {
 
     expect(fetchFn).toHaveBeenCalledTimes(2);
     expect(result).toEqual({ data: "success" });
+  });
+
+  it("aborts a hung request after requestTimeoutMs and rejects", { timeout: 3000 }, async () => {
+    vi.useFakeTimers();
+    // fetch that never resolves on its own, but rejects when its signal aborts
+    const fetchFn = vi.fn().mockImplementation((_url, init: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        init.signal?.addEventListener("abort", () =>
+          reject((init.signal as AbortSignal).reason ?? new Error("aborted")),
+        );
+      });
+    });
+    vi.stubGlobal("fetch", fetchFn);
+
+    const client = new HttpClient("https://api.test.com/api/co", makeTokenManager(), undefined, {
+      requestTimeoutMs: 100,
+    });
+    const p = client.get("Slow");
+    const assertion = expect(p).rejects.toThrow(BeProductError);
+    await vi.runAllTimersAsync(); // drive the abort timeout + retry backoffs to completion
+    await assertion;
+    expect(fetchFn).toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it("passes a signal to fetch when a timeout is configured", async () => {
+    const fetchFn = mockFetch({ json: () => Promise.resolve({}) });
+    const client = new HttpClient("https://api.test.com/api/co", makeTokenManager(), undefined, {
+      requestTimeoutMs: 5_000,
+    });
+    await client.get("Test");
+    const opts = fetchFn.mock.calls[0][1] as RequestInit;
+    expect(opts.signal).toBeInstanceOf(AbortSignal);
   });
 
   it("throws BeProductThrottleError after exhausting retries", async () => {

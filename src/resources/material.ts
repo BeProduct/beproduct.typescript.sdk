@@ -4,6 +4,9 @@ import { fieldsToUpdateItems } from "../schemas/common.js";
 import type { MaterialHeader } from "../schemas/material.js";
 import { EntityResource } from "./base.js";
 
+/** Which material attribute image slot to upload to. */
+export type MaterialImagePosition = "main" | "detail";
+
 export class MaterialResource extends EntityResource {
   protected entityType = "Material";
 
@@ -21,6 +24,22 @@ export class MaterialResource extends EntityResource {
 
   override async get(headerId: string): Promise<MaterialHeader> {
     return this.http.get(`Material/Header/${headerId}`);
+  }
+
+  /**
+   * Upload an image to the material's attributes. Pass `position` to target
+   * the `"main"` or `"detail"` slot; omit it for the default upload. Returns
+   * the image id — poll {@link imageProcessingStatus} for completion.
+   *
+   * @example
+   *   const id = await client.material.upload(headerId, { filepath }, "main");
+   */
+  override async upload(
+    headerId: string,
+    file: FileInput,
+    position?: MaterialImagePosition,
+  ): Promise<string | null> {
+    return super.upload(headerId, file, position);
   }
 
   async create(
