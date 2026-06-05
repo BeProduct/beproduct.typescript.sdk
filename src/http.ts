@@ -41,14 +41,51 @@ function describeNetworkError(err: unknown): string {
   return parts.join(" → ");
 }
 
+export interface HttpClientOptions {
+  /** Abort a single request that hasn't responded within this many ms.
+   *  Defaults to 60_000 (1 min). Set to 0 to disable. */
+  requestTimeoutMs?: number;
+  /** Same, for multipart uploads. Defaults to `requestTimeoutMs`. */
+  uploadTimeoutMs?: number;
+}
+
 export class HttpClient {
   rateLimitState: RateLimitState | null = null;
+  private readonly requestTimeoutMs: number;
+  private readonly uploadTimeoutMs: number;
 
   constructor(
     private readonly baseUrl: string,
     private readonly tokenManager: OAuth2TokenManager,
     private readonly additionalHeaders?: Record<string, string>,
-  ) {}
+    options?: HttpClientOptions,
+  ) {
+    this.requestTimeoutMs = options?.requestTimeoutMs ?? 60_000;
+    this.uploadTimeoutMs = options?.uploadTimeoutMs ?? this.requestTimeoutMs;
+  }
+
+  /**
+   * fetch wrapped in an AbortController so a stalled connection can't hang
+   * forever. On timeout the underlying fetch rejects with a TimeoutError,
+   * which the callers treat as a (retryable) transport-layer failure.
+   */
+  private async fetchWithTimeout(
+    url: string,
+    init: RequestInit,
+    timeoutMs: number,
+  ): Promise<Response> {
+    if (!timeoutMs || timeoutMs <= 0) return fetch(url, init);
+    const controller = new AbortController();
+    const timer = setTimeout(
+      () => controller.abort(new DOMException(`request timed out after ${timeoutMs}ms`, "TimeoutError")),
+      timeoutMs,
+    );
+    try {
+      return await fetch(url, { ...init, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 
   async get<T = unknown>(
     url: string,
@@ -114,7 +151,18 @@ export class HttpClient {
     for (let attempt = 0; ; attempt++) {
       await this.preemptiveThrottle();
 
-      const res = await fetch(fullUrl, { method: "POST", headers, body: form });
+      let res: Response;
+      try {
+        res = await this.fetchWithTimeout(fullUrl, { method: "POST", headers, body: form }, this.uploadTimeoutMs);
+      } catch (err) {
+        throw new BeProductError(
+          `Upload failed: ${describeNetworkError(err)}`,
+          0,
+          fullUrl,
+          err instanceof Error ? err.stack ?? err.message : String(err),
+          "POST",
+        );
+      }
       this.updateRateLimitState(res.headers);
 
       if (res.status === 429) {
@@ -184,11 +232,11 @@ export class HttpClient {
 
       let res: Response;
       try {
-        res = await fetch(fullUrl, {
+        res = await this.fetchWithTimeout(fullUrl, {
           method,
           headers,
           body: requestBodyStr,
-        });
+        }, this.requestTimeoutMs);
       } catch (err) {
         // undici throws TypeError("fetch failed") for transport-layer errors
         // (DNS, ECONNRESET, socket drop, TLS, read timeout). Retry a handful

@@ -36,7 +36,7 @@ shorter than `pageSize`. `break` cleanly cancels further fetches.
 ## Get / Create / Update / Delete
 
 ```ts
-const header = await bp.style.get(headerId);
+const header = await bp.style.get(headerId);            // by GUID
 const created = await bp.style.create(folderId, {
   headerName: "Tee — Round Neck",
   headerNumber: "T-101",
@@ -49,6 +49,23 @@ await bp.style.deleteHeader(headerId);   // soft delete
 `update` accepts either a `Record<string, unknown>` (key-value shorthand)
 or an `UpdateItem[]` (the API's native `{ id, value }` shape). The
 shorthand is converted via `fieldsToUpdateItems`.
+
+### Looking up by header number
+
+When you have the human-facing header **number** (e.g. `"T-101"`) rather
+than the GUID, use `getByNumber`. It resolves to the first match, or
+`null` if none:
+
+```ts
+const style = await bp.style.getByNumber("T-101");
+if (style) console.log(style.id);
+
+// scope to one folder when numbers aren't unique tenant-wide:
+const inFolder = await bp.style.getByNumber("T-101", { folderId });
+```
+
+It's a thin convenience over `list()` with a `header_number` Eq filter —
+reach for `list()` directly if you need more than the first hit.
 
 ## Folders
 

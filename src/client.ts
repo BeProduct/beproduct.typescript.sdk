@@ -20,6 +20,11 @@ export interface BeProductConfig {
   publicApiUrl?: string;
   accessToken?: string;
   additionalHeaders?: Record<string, string>;
+  /** Abort any single request that stalls past this many ms. Default 60_000
+   *  (1 min). Set to 0 to disable. Existing callers need no changes. */
+  requestTimeoutMs?: number;
+  /** Same, for multipart uploads. Defaults to `requestTimeoutMs`. */
+  uploadTimeoutMs?: number;
 }
 
 export class BeProduct {
@@ -52,6 +57,7 @@ export class BeProduct {
       tokenEndpoint,
       clientId: config.clientId ?? "",
       clientSecret: config.clientSecret ?? "",
+      timeoutMs: config.requestTimeoutMs,
     });
 
     if (config.accessToken) {
@@ -61,7 +67,10 @@ export class BeProduct {
       tokenManager.setRefreshToken(config.refreshToken);
     }
 
-    this.raw = new HttpClient(baseUrl, tokenManager, config.additionalHeaders);
+    this.raw = new HttpClient(baseUrl, tokenManager, config.additionalHeaders, {
+      requestTimeoutMs: config.requestTimeoutMs,
+      uploadTimeoutMs: config.uploadTimeoutMs,
+    });
 
     this.style = new StyleResource(this.raw);
     this.material = new MaterialResource(this.raw);

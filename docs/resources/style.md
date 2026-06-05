@@ -24,6 +24,22 @@ const pages = await bp.style.folderPages(folderId);
 `folderPages` works for any master folder despite living on `bp.style`
 — the underlying server route is folder-agnostic.
 
+## Attribute image (front / side / back)
+
+Set the style header image — the picture shown on the style itself. The
+slot is typed `StyleImagePosition` (`"front" | "side" | "back"`); omit it
+for the default (front) upload.
+
+```ts
+const imageId = await bp.style.upload(headerId, file, "front");
+const status  = await bp.style.imageProcessingStatus(imageId);
+```
+
+This is distinct from `artboardVersionUpload` (which adds a *version* to
+the Artboard app, see [below](#3d--artboards)). See
+[../file-uploads.md](../file-uploads.md#attribute-images-frontsideback)
+for the upload + poll pattern.
+
 ## Colorways
 
 Style headers carry colorways inline in `style.list()` results, so

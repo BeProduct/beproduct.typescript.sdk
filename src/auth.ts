@@ -2,6 +2,8 @@ export interface TokenManagerConfig {
   tokenEndpoint: string;
   clientId: string;
   clientSecret: string;
+  /** Abort the token request if it stalls past this many ms. Default 60_000. */
+  timeoutMs?: number;
 }
 
 export class OAuth2TokenManager {
@@ -48,11 +50,22 @@ export class OAuth2TokenManager {
       grant_type: "refresh_token",
     });
 
-    const res = await fetch(this.config.tokenEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body,
-    });
+    const timeoutMs = this.config.timeoutMs ?? 60_000;
+    const controller = new AbortController();
+    const timer = timeoutMs > 0
+      ? setTimeout(() => controller.abort(new DOMException(`token request timed out after ${timeoutMs}ms`, "TimeoutError")), timeoutMs)
+      : undefined;
+    let res: Response;
+    try {
+      res = await fetch(this.config.tokenEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+        signal: controller.signal,
+      });
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
 
     if (!res.ok) {
       const text = await res.text();

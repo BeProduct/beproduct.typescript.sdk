@@ -136,18 +136,25 @@ await bp.style.appAttachmentsDelete(headerId, appId, [attachmentId1, attachmentI
 See [../file-uploads.md](../file-uploads.md) for the `FileInput` shape
 and the async-processing pattern.
 
-## Per-row image uploads (List / ImagesForm / Artboard)
+## App image uploads (List / ImagesForm / ImagesGrid / Artboard)
 
 ```ts
-// List app — image per row:
-await bp.style.appListUpload(headerId, appId, listItemId, "image", file);
+// List app — one image per row (target the row by its id):
+await bp.style.appListUpload(headerId, appId, listItemId, file);
 
-// Form image field:
-await bp.style.appImageFormUpload(headerId, appId, "frontView", file);
+// ImagesForm app:
+await bp.style.appImageFormUpload(headerId, appId, file);
+
+// ImagesGrid app (same server endpoint as the form variant):
+await bp.style.appImageGridUpload(headerId, appId, file);
 
 // Artboard new version:
 await bp.style.artboardVersionUpload(headerId, file);
 ```
+
+Each returns a `string | null` image id; poll
+[`imageProcessingStatus`](../file-uploads.md#the-async-processing-dance)
+if the asset needs server-side processing.
 
 ## Comments and revisions on the app
 

@@ -24,8 +24,8 @@ export * from "./schemas/field-values.js";
 
 // Resources
 export { EntityResource, type SearchFilter, type ListOptions } from "./resources/base.js";
-export { StyleResource } from "./resources/style.js";
-export { MaterialResource } from "./resources/material.js";
+export { StyleResource, type StyleImagePosition } from "./resources/style.js";
+export { MaterialResource, type MaterialImagePosition } from "./resources/material.js";
 export { ColorResource } from "./resources/color.js";
 export { BlockResource } from "./resources/block.js";
 export { ImageResource } from "./resources/image.js";

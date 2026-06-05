@@ -18,6 +18,19 @@ const pages = await bp.material.folderPages(folderId);
 // → AppPage[] — every app page configured for this folder
 ```
 
+## Attribute image
+
+Set the material header image. The slot is typed `MaterialImagePosition`
+(`"main" | "detail"`); omit it for the default upload.
+
+```ts
+const imageId = await bp.material.upload(headerId, file, "main");
+const status  = await bp.material.imageProcessingStatus(imageId);
+```
+
+See [../file-uploads.md](../file-uploads.md#attribute-images-frontsideback)
+for the full upload + poll pattern.
+
 ## Colorways
 
 ```ts

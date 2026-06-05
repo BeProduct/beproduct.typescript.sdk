@@ -4,6 +4,9 @@ import { fieldsToUpdateItems } from "../schemas/common.js";
 import type { StyleHeader } from "../schemas/style.js";
 import { EntityResource } from "./base.js";
 
+/** Where a style attribute image sits on the style. */
+export type StyleImagePosition = "front" | "side" | "back";
+
 export class StyleResource extends EntityResource {
   protected entityType = "Style";
 
@@ -21,6 +24,23 @@ export class StyleResource extends EntityResource {
 
   override async get(headerId: string): Promise<StyleHeader> {
     return this.http.get(`Style/Header/${headerId}`);
+  }
+
+  /**
+   * Upload an image to the style's attributes (main artboard image).
+   * Pass `position` to target a specific view — `"front"`, `"side"`, or
+   * `"back"`; omit it for the default artboard upload. Returns the image id,
+   * which you can poll via {@link imageProcessingStatus}.
+   *
+   * @example
+   *   const id = await client.style.upload(headerId, { filepath }, "front");
+   */
+  override async upload(
+    headerId: string,
+    file: FileInput,
+    position?: StyleImagePosition,
+  ): Promise<string | null> {
+    return super.upload(headerId, file, position);
   }
 
   async create(
