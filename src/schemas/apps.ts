@@ -37,6 +37,7 @@ import { SampleRequestAppDataSchema, DesignSampleDataSchema } from "./apps/sampl
 import { MultiMeasurementsDataSchema, MeasurementsDataSchema, BlockMeasurementsDataSchema } from "./apps/measurements.js";
 import { Style3DDataSchema, Material3DDataSchema } from "./apps/three-d.js";
 import { RevisionItemSchema } from "./apps/revisions.js";
+import { deepNullable } from "./nullable.js";
 
 // --- Artboard (fallback — raw schema passthrough) ---
 export const ArtboardDataSchema = z.record(z.string(), z.unknown());
@@ -105,3 +106,12 @@ export type AppDataFor<T extends TypedAppType> = z.infer<(typeof AppDataSchemas)
 
 /** Typed app result — data is inferred from the app type */
 export type TypedAppResult<T extends TypedAppType> = AppResult<AppDataFor<T>>;
+
+/**
+ * Parse an app page's `data` against its typed schema, tolerating `null` on any
+ * field (the API returns null liberally). Shared by `appGetTyped` and tests so
+ * the validation rule lives in one place.
+ */
+export function parseAppData<T extends TypedAppType>(appType: T, data: unknown): AppDataFor<T> {
+  return deepNullable(AppDataSchemas[appType]).parse(data) as AppDataFor<T>;
+}

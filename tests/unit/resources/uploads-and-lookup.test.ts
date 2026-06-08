@@ -104,6 +104,31 @@ describe("#3 appImageGridUpload", () => {
     expect(url).toContain("Material/GridFormImageAppImageUpload");
     expect(url).toContain(`materialId=${HEADER}`);
   });
+
+  it("appImagesGridItemUpload — posts to ImagesGridAppImageUpload with listItemId", async () => {
+    mockFetch({ imageId: "img-ig-item" });
+    const client = makeClient();
+    const id = await client.style.appImagesGridItemUpload(HEADER, APP, "item-1", pngFile());
+
+    const url = lastUrl();
+    expect(url).toContain("Style/ImagesGridAppImageUpload");
+    expect(url).toContain(`styleId=${HEADER}`);
+    expect(url).toContain(`pageId=${APP}`);
+    expect(url).toContain("listItemId=item-1");
+    expect(id).toBe("img-ig-item");
+  });
+
+  it("appTextListUpload — posts to TextListAppImageUpload with listItemId", async () => {
+    mockFetch({ imageId: "img-tl-item" });
+    const client = makeClient();
+    const id = await client.style.appTextListUpload(HEADER, APP, "item-2", pngFile());
+
+    const url = lastUrl();
+    expect(url).toContain("Style/TextListAppImageUpload");
+    expect(url).toContain(`styleId=${HEADER}`);
+    expect(url).toContain("listItemId=item-2");
+    expect(id).toBe("img-tl-item");
+  });
 });
 
 describe("#4 getByNumber", () => {

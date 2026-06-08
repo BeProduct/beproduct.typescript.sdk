@@ -1,6 +1,6 @@
 import type { FileInput } from "../http.js";
-import type { SchemaField, AppPage, UpdateItem } from "../schemas/common.js";
-import { fieldsToUpdateItems } from "../schemas/common.js";
+import type { SchemaField, AppPage, UpdateItem, ColorwayInput } from "../schemas/common.js";
+import { fieldsToUpdateItems, normalizeColorways } from "../schemas/common.js";
 import type { StyleHeader } from "../schemas/style.js";
 import { EntityResource } from "./base.js";
 
@@ -47,7 +47,7 @@ export class StyleResource extends EntityResource {
     folderId: string,
     fields: Record<string, unknown> | UpdateItem[],
     options?: {
-      colorways?: unknown[];
+      colorways?: ColorwayInput[];
       sizes?: unknown[];
       sizeClasses?: unknown[];
       preserveVersion?: boolean;
@@ -56,7 +56,7 @@ export class StyleResource extends EntityResource {
     const f = Array.isArray(fields) ? fields : fieldsToUpdateItems(fields);
     return this.http.post("Style/Header/Create", {
       fields: f,
-      colorways: options?.colorways,
+      colorways: normalizeColorways(options?.colorways),
       sizes: options?.sizes,
       sizeClasses: options?.sizeClasses,
     }, { folderId, preserveVersion: options?.preserveVersion });
@@ -65,14 +65,14 @@ export class StyleResource extends EntityResource {
   async update(
     headerId: string,
     fields?: Record<string, unknown> | UpdateItem[],
-    options?: { colorways?: unknown[]; sizes?: unknown[]; sizeClasses?: unknown[] },
+    options?: { colorways?: ColorwayInput[]; sizes?: unknown[]; sizeClasses?: unknown[] },
   ): Promise<StyleHeader> {
     const f = fields
       ? Array.isArray(fields) ? fields : fieldsToUpdateItems(fields)
       : [];
     return this.http.post(`Style/Header/${headerId}/Update`, {
       fields: f,
-      colorways: options?.colorways,
+      colorways: normalizeColorways(options?.colorways),
       sizes: options?.sizes,
       sizeClasses: options?.sizeClasses,
     });

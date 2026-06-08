@@ -179,6 +179,20 @@ describe("Base entity write operations (via Style)", () => {
     expect(c.body[2].deleteRow).toBe(true);
   });
 
+  it("appImagesGridListUpdate — POST PageImagesGrid/List", async () => {
+    mockFetch({});
+    const client = makeClient();
+    await client.style.appImagesGridListUpdate(HEADER, APP, [
+      { itemId: null, itemFields: [{ id: "text", value: "hi" }] },
+    ]);
+
+    const c = lastCall();
+    expect(c.url).toContain("Style/PageImagesGrid/List");
+    expect(c.url).toContain(`headerId=${HEADER}`);
+    expect(c.url).toContain(`pageId=${APP}`);
+    expect(c.body[0].itemFields[0]).toEqual({ id: "text", value: "hi" });
+  });
+
   it("appAttachmentsDelete — filenames array", async () => {
     mockFetch({});
     const client = makeClient();

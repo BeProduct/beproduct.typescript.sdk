@@ -56,6 +56,33 @@ describe("Style write operations", () => {
     expect(c.body.colorways).toEqual([{ colorNumber: "C1" }]);
   });
 
+  it("create — unwinds colorway `fields` dict into [{id,value}]", async () => {
+    mockFetch({ id: "a1b2c3d4-0000-0000-0000-000000000002" });
+    const client = makeClient();
+    await client.style.create(
+      FOLDER,
+      { header_name: "New Style" },
+      {
+        colorways: [
+          { id: null, fields: { color_number: "#1", color_name: "Navy", primary: "000000" } },
+        ],
+      },
+    );
+
+    const c = lastCall();
+    // The API requires colour fields inside an array of {id,value}, not a dict.
+    expect(c.body.colorways).toEqual([
+      {
+        id: null,
+        fields: [
+          { id: "color_number", value: "#1" },
+          { id: "color_name", value: "Navy" },
+          { id: "primary", value: "000000" },
+        ],
+      },
+    ]);
+  });
+
   it("update — POST Style/Header/{id}/Update", async () => {
     mockFetch({});
     const client = makeClient();

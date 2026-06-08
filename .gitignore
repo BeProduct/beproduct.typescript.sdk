@@ -8,6 +8,10 @@ dist/
 coverage/
 .vitest-cache/
 
+# Integration test golden data + assets — tenant-specific, never committed
+tests/integration/fixtures/
+tests/integration/assets/
+
 # OS
 .DS_Store
 Thumbs.db

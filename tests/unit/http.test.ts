@@ -82,28 +82,25 @@ describe("HttpClient", () => {
     expect(client.rateLimitState).toBeNull();
   });
 
-  it("retries on 429 with Retry-After header", async () => {
-    const fetchFn = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 429,
-        headers: new Headers({ "Retry-After": "0" }),
-        json: () => Promise.resolve({ error: "Rate limit exceeded", retryAfterSeconds: 0 }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers(),
-        json: () => Promise.resolve({ data: "success" }),
-      });
+  it("throws BeProductThrottleError immediately on 429 (no retry/sleep)", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      // A large Retry-After must NOT cause the client to sleep — it surfaces as an error.
+      headers: new Headers({ "Retry-After": "54000" }),
+      json: () => Promise.resolve({ retryAfterSeconds: 54000, window: "1 hour", limit: 1000 }),
+    });
     vi.stubGlobal("fetch", fetchFn);
 
     const client = new HttpClient("https://api.test.com/api/co", makeTokenManager());
-    const result = await client.get("Test");
+    const err = await client.get("Test").catch((e) => e);
 
-    expect(fetchFn).toHaveBeenCalledTimes(2);
-    expect(result).toEqual({ data: "success" });
+    expect(err).toBeInstanceOf(BeProductThrottleError);
+    expect(err.retryAfterSeconds).toBe(54000);
+    expect(err.window).toBe("1 hour");
+    expect(err.limit).toBe(1000);
+    // exactly one call — no retry loop
+    expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 
   it("aborts a hung request after requestTimeoutMs and rejects", { timeout: 3000 }, async () => {
@@ -139,23 +136,22 @@ describe("HttpClient", () => {
     expect(opts.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it("throws BeProductThrottleError after exhausting retries", async () => {
-    // Use Retry-After: 0 so sleep is instant, but exhaust after 6 attempts
+  it("throws BeProductThrottleError on 429 without a Retry-After header", async () => {
     let calls = 0;
     const fetchFn = vi.fn().mockImplementation(() => {
       calls++;
       return Promise.resolve({
         ok: false,
         status: 429,
-        headers: new Headers({ "Retry-After": "0" }),
-        json: () => Promise.resolve({ error: "Rate limit exceeded", retryAfterSeconds: 0, window: "1 minute", limit: 60 }),
+        headers: new Headers(),
+        json: () => Promise.resolve({ window: "1 minute", limit: 60 }),
       });
     });
     vi.stubGlobal("fetch", fetchFn);
 
     const client = new HttpClient("https://api.test.com/api/co", makeTokenManager());
     await expect(client.get("Test")).rejects.toThrow(BeProductThrottleError);
-    // Should have retried 6 times (initial + 5 retries) before throwing
-    expect(calls).toBe(6);
+    // throws on the first 429 — no retry loop
+    expect(calls).toBe(1);
   });
 });

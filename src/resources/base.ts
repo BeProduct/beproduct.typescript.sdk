@@ -13,7 +13,7 @@ import {
 } from "../schemas/common.js";
 import type { Tag } from "../schemas/tags.js";
 import type { SharedPartner } from "../schemas/share.js";
-import { AppDataSchemas, type AppResult, type TypedAppType, type TypedAppResult } from "../schemas/apps.js";
+import { parseAppData, type AppResult, type TypedAppType, type TypedAppResult } from "../schemas/apps.js";
 
 export interface SearchFilter {
   field: string;
@@ -129,8 +129,7 @@ export abstract class EntityResource {
     appType: T,
   ): Promise<TypedAppResult<T>> {
     const raw = await this.appGet(headerId, appId);
-    const schema = AppDataSchemas[appType];
-    const data = schema.parse(raw.data);
+    const data = parseAppData(appType, raw.data);
     return { ...raw, data } as TypedAppResult<T>;
   }
 
@@ -192,6 +191,23 @@ export abstract class EntityResource {
     items: ListUpdateItem[],
   ): Promise<unknown> {
     return this.http.post(`${this.entityType}/PageList`, items, {
+      headerId,
+      pageId: appId,
+    });
+  }
+
+  /**
+   * Update the image-list part of an **ImagesGrid** app. ImagesGrid has two
+   * parts: a grid (rows → {@link appGridUpdate}) and an image list (entries →
+   * this method). Same `ListUpdateItem` shape as {@link appListUpdate}, but a
+   * distinct endpoint (`PageImagesGrid/List`).
+   */
+  async appImagesGridListUpdate(
+    headerId: string,
+    appId: string,
+    items: ListUpdateItem[],
+  ): Promise<unknown> {
+    return this.http.post(`${this.entityType}/PageImagesGrid/List`, items, {
       headerId,
       pageId: appId,
     });
@@ -274,6 +290,40 @@ export abstract class EntityResource {
     file: FileInput,
   ): Promise<string | null> {
     return this.appImageFormUpload(headerId, appId, file);
+  }
+
+  /**
+   * Upload an image onto a specific **ImagesGrid** image-list item (created via
+   * {@link appImagesGridListUpdate}). Distinct endpoint from the general
+   * ImagesGrid/ImagesForm image upload — it targets a `listItemId`.
+   */
+  async appImagesGridItemUpload(
+    headerId: string,
+    appId: string,
+    listItemId: string,
+    file: FileInput,
+  ): Promise<string | null> {
+    const key = this.entityType.toLowerCase();
+    return this.http.uploadFile(`${this.entityType}/ImagesGridAppImageUpload`, file, {
+      [`${key}Id`]: headerId,
+      pageId: appId,
+      listItemId,
+    });
+  }
+
+  /** Upload an image onto a specific **TextList** image-list item. */
+  async appTextListUpload(
+    headerId: string,
+    appId: string,
+    listItemId: string,
+    file: FileInput,
+  ): Promise<string | null> {
+    const key = this.entityType.toLowerCase();
+    return this.http.uploadFile(`${this.entityType}/TextListAppImageUpload`, file, {
+      [`${key}Id`]: headerId,
+      pageId: appId,
+      listItemId,
+    });
   }
 
   async uploadStatus(

@@ -93,3 +93,32 @@ export function fieldsToUpdateItems(
 ): UpdateItem[] {
   return Object.entries(fields).map(([id, value]) => ({ id, value }));
 }
+
+/** A colorway as accepted by create/update: `fields` may be a dict or already-unwound array. */
+export interface ColorwayInput {
+  /** `null`/omitted → create a new colorway; otherwise the colorway id to update. */
+  id?: string | null;
+  /** Colorway field values, either as `{ fieldId: value }` or `[{ id, value }]`. */
+  fields?: Record<string, unknown> | UpdateItem[];
+  [key: string]: unknown;
+}
+
+/**
+ * Normalize colorways for the create/update body. The API expects each
+ * colorway's `fields` as an array of `{ id, value }`, with colour fields
+ * (`color_number`, `color_name`, `primary`, …) living *inside* that array.
+ * Callers may pass `fields` as a convenient dict (matching the Python SDK);
+ * this unwinds it. Colorways without a dict `fields` pass through untouched.
+ */
+export function normalizeColorways(
+  colorways: readonly ColorwayInput[] | undefined,
+): unknown[] | undefined {
+  if (!colorways) return undefined;
+  return colorways.map((cw) => {
+    const fields = cw.fields;
+    if (fields && !Array.isArray(fields) && typeof fields === "object") {
+      return { ...cw, fields: fieldsToUpdateItems(fields as Record<string, unknown>) };
+    }
+    return cw;
+  });
+}

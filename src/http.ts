@@ -19,8 +19,6 @@ export interface FileInput {
   size?: number;
 }
 
-const FALLBACK_BACKOFF = [1, 3, 5, 15, 30];
-
 /**
  * Walk the `cause` chain on a fetch error and produce a readable summary.
  * undici's `TypeError("fetch failed")` carries the real cause (system error
@@ -43,7 +41,7 @@ function describeNetworkError(err: unknown): string {
 
 export interface HttpClientOptions {
   /** Abort a single request that hasn't responded within this many ms.
-   *  Defaults to 60_000 (1 min). Set to 0 to disable. */
+   *  Defaults to 300_000 (5 min). Set to 0 to disable. */
   requestTimeoutMs?: number;
   /** Same, for multipart uploads. Defaults to `requestTimeoutMs`. */
   uploadTimeoutMs?: number;
@@ -60,7 +58,7 @@ export class HttpClient {
     private readonly additionalHeaders?: Record<string, string>,
     options?: HttpClientOptions,
   ) {
-    this.requestTimeoutMs = options?.requestTimeoutMs ?? 60_000;
+    this.requestTimeoutMs = options?.requestTimeoutMs ?? 300_000;
     this.uploadTimeoutMs = options?.uploadTimeoutMs ?? this.requestTimeoutMs;
   }
 
@@ -148,7 +146,7 @@ export class HttpClient {
       throw new Error("FileInput must provide filepath, fileUrl, or buffer+filename");
     }
 
-    for (let attempt = 0; ; attempt++) {
+    for (;;) {
       await this.preemptiveThrottle();
 
       let res: Response;
@@ -166,7 +164,7 @@ export class HttpClient {
       this.updateRateLimitState(res.headers);
 
       if (res.status === 429) {
-        if (await this.handleThrottle(res, attempt, fullUrl)) continue;
+        await this.throwThrottle(res, fullUrl);
       }
 
       if (!res.ok) {
@@ -220,7 +218,7 @@ export class HttpClient {
     let networkAttempts = 0;
     let httpRetries = 0;
 
-    for (let attempt = 0; ; attempt++) {
+    for (;;) {
       await this.preemptiveThrottle();
 
       const token = await this.tokenManager.getAccessToken();
@@ -262,7 +260,7 @@ export class HttpClient {
       this.updateRateLimitState(res.headers);
 
       if (res.status === 429) {
-        if (await this.handleThrottle(res, attempt, fullUrl)) continue;
+        await this.throwThrottle(res, fullUrl);
       }
 
       if (!res.ok) {
@@ -369,43 +367,32 @@ export class HttpClient {
     }
   }
 
-  /** Returns true if should retry, throws if exhausted */
-  private async handleThrottle(
-    res: Response,
-    attempt: number,
-    url: string,
-  ): Promise<boolean> {
-    // Try header first
-    let waitSeconds: number | undefined;
+  /**
+   * On HTTP 429, surface the rate-limit info as a thrown error rather than
+   * sleeping. The server's `Retry-After` can be arbitrarily large (minutes to
+   * hours); honoring it would silently block the caller for that long. Callers
+   * decide how to react to a {@link BeProductThrottleError}. Always throws.
+   */
+  private async throwThrottle(res: Response, url: string): Promise<never> {
+    let retryAfterSeconds: number | undefined;
     const retryAfter = res.headers.get("Retry-After");
     if (retryAfter) {
-      waitSeconds = parseInt(retryAfter, 10);
+      const n = parseInt(retryAfter, 10);
+      if (!Number.isNaN(n)) retryAfterSeconds = n;
     }
 
-    // Try body
     let window: string | undefined;
     let limit: number | undefined;
     try {
       const body = (await res.json()) as Record<string, unknown>;
-      waitSeconds ??= body.retryAfterSeconds as number | undefined;
+      retryAfterSeconds ??= body.retryAfterSeconds as number | undefined;
       window = body.window as string | undefined;
       limit = body.limit as number | undefined;
     } catch {
       // body may not be JSON
     }
 
-    // Fallback to exponential backoff
-    if (waitSeconds == null) {
-      if (attempt >= FALLBACK_BACKOFF.length) {
-        throw new BeProductThrottleError(url, undefined, window, limit);
-      }
-      waitSeconds = FALLBACK_BACKOFF[attempt];
-    } else if (attempt >= 5) {
-      throw new BeProductThrottleError(url, waitSeconds, window, limit);
-    }
-
-    await sleep(waitSeconds * 1000);
-    return true;
+    throw new BeProductThrottleError(url, retryAfterSeconds, window, limit);
   }
 }
 
