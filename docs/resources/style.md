@@ -92,8 +92,8 @@ Style headers carry colorways inline in `style.list()` results, so
 fetching is read-via-list. Mutations live on `bp.style`:
 
 ```ts
-// Upload a swatch image for a colorway
-const imageId = await bp.style.colorwayUpload(headerId, colorwayId, file);
+// Upload a swatch image for a colorway (target by colorway id or color number)
+const imageId = await bp.style.colorwayUpload(headerId, file, { colorwayId });
 
 // Delete one
 await bp.style.colorwayDelete(headerId, colorwayId);
@@ -102,9 +102,22 @@ await bp.style.colorwayDelete(headerId, colorwayId);
 await bp.style.colorwaysDelete(headerId, [c1, c2, c3]);
 ```
 
-To add or update colorways, use `bp.style.update(headerId, fields)` with
-the colorway field IDs — the schema from `colorwaySchema(folderId)` tells
-you what to pass.
+Add or update colorways through the `colorways` option on `create` / `update`.
+Each colorway is `{ id, fields }` — `id` is `null` to create a new colorway (or
+the colorway id to update), and `fields` is a plain dict of the colorway field
+ids from `colorwaySchema(folderId)` (`color_number` and `color_name` are
+required for a new colorway):
+
+```ts
+await bp.style.update(headerId, undefined, {
+  colorways: [
+    { id: null, fields: { color_number: "#1", color_name: "Navy", primary: "000080" } },
+  ],
+});
+```
+
+The SDK unwinds that `fields` dict into the `[{ id, value }]` array the API
+expects — you just pass `{ fieldId: value }`.
 
 ## BOM
 

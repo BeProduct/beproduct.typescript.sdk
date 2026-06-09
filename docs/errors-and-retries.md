@@ -1,9 +1,11 @@
 # Errors and retries
 
 The SDK surfaces three error classes plus has built-in retry behaviour for
-transport blips and 5xx gateway errors. Network errors and 429s do **not**
-need application-level retry — that's already handled. Business retries
-(idempotent ops the customer might want to repeat) are still on you.
+transport blips and 5xx gateway errors. Network/5xx errors are retried for
+you; **rate-limit (429) responses are not** — they throw
+`BeProductThrottleError` immediately so the caller decides how to back off.
+Business retries (idempotent ops the customer might want to repeat) are still
+on you.
 
 ## Error classes
 
@@ -11,7 +13,7 @@ need application-level retry — that's already handled. Business retries
 |---|---|
 | `BeProductError` | Any non-2xx that isn't 400/429, plus exhausted network/body retries |
 | `BeProductValidationError` | 400 with a JSON validation body |
-| `BeProductThrottleError` | 429 after the SDK exhausts its built-in retry ladder |
+| `BeProductThrottleError` | a `429` rate-limit response — thrown immediately (the SDK does **not** retry or sleep) |
 
 All three carry replay context:
 
@@ -64,6 +66,19 @@ Retries happen for the initial connect and for body-read errors mid-stream
 (some BeProduct endpoints commit `200 OK` then reset the chunked body —
 indistinguishable from a transport reset from the client).
 
+## Request timeout
+
+Each request is aborted if the server hasn't responded within
+`requestTimeoutMs` (default **5 minutes**; `uploadTimeoutMs` covers multipart
+uploads and defaults to the same value). A timeout aborts the underlying
+`fetch`, which is then treated as a transport error — retried up to 3×, then
+surfaced as a `BeProductError` with `statusCode: 0`. Override per client, or
+set to `0` to disable:
+
+```ts
+const bp = new BeProduct({ companyDomain, /* … */ requestTimeoutMs: 30_000 });
+```
+
 ## Transient HTTP statuses
 
 `502`, `503`, `504` are retried with the same 3-attempt 0.5 / 1 / 2 s
@@ -80,23 +95,31 @@ Every response carries `X-RateLimit-Limit` / `X-RateLimit-Remaining` /
 `X-RateLimit-Reset` (Unix-seconds reset time). The SDK tracks them on the
 `HttpClient` and:
 
-- **Pre-emptively** sleeps when `remaining === 0` and `resetAt` is in the
-  future — up to 120 s; longer waits surface immediately so the caller
-  decides what to do.
-- On a `429`, honours `Retry-After` (header or `body.retryAfterSeconds`).
-  If neither is present, falls back to a `[1, 3, 5, 15, 30]` second
-  ladder. After 6 attempts surfaces `BeProductThrottleError`.
+- **Pre-emptively** sleeps before a request when the last response reported
+  `remaining === 0` and `resetAt` is in the future — capped at 120 s; longer
+  waits are skipped so the caller isn't blocked.
+- On a `429`, **throws `BeProductThrottleError` immediately** — it does *not*
+  sleep on `Retry-After` and does *not* retry. (Honouring an arbitrarily large
+  `Retry-After` could otherwise block the process for minutes or hours.) The
+  error carries `retryAfterSeconds` / `window` / `limit` (parsed from the
+  `Retry-After` header or the response body) so you can schedule your own
+  backoff.
 
 ```ts
 import { BeProductThrottleError } from "beproduct";
 try { /* ... */ }
 catch (err) {
   if (err instanceof BeProductThrottleError) {
-    console.warn(`throttled — retry in ${err.retryAfterSeconds}s, window=${err.window}, limit=${err.limit}`);
-    // schedule a retry well after the reset, or back off the whole pipeline
+    console.warn(`throttled — retry after ${err.retryAfterSeconds}s, window=${err.window}, limit=${err.limit}`);
+    // back off the whole pipeline, or schedule a retry past the reset
   }
 }
 ```
+
+A live snapshot of all rate-limit windows is available via
+`bp.raw.getRateLimitStatus()` (`GET ratelimit/status`), which returns the
+`per_minute` / `per_hour` / `per_day` policies with `limit` / `remaining` /
+`used` / `resetAt`.
 
 The current rate-limit snapshot is on `bp.raw.rateLimitState`:
 

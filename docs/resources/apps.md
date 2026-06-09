@@ -79,6 +79,9 @@ await bp.style.appGridUpdate(headerId, appId, [
 // List (text list / list app):
 await bp.style.appListUpdate(headerId, appId, listUpdates);
 
+// ImagesGrid — the image-LIST portion (its grid rows go through appGridUpdate):
+await bp.style.appImagesGridListUpdate(headerId, appId, listUpdates);
+
 // BOM rows:
 await bp.style.bomUpdate(headerId, appId, [
   { rowId, group: "Body", materialHeaderId, quantity: 2.5, ... },
@@ -142,11 +145,16 @@ and the async-processing pattern.
 // List app — one image per row (target the row by its id):
 await bp.style.appListUpload(headerId, appId, listItemId, file);
 
+// TextList app — image on a specific list item:
+await bp.style.appTextListUpload(headerId, appId, listItemId, file);
+
 // ImagesForm app:
 await bp.style.appImageFormUpload(headerId, appId, file);
 
-// ImagesGrid app (same server endpoint as the form variant):
+// ImagesGrid app — general image area (shares the ImagesForm endpoint):
 await bp.style.appImageGridUpload(headerId, appId, file);
+// ImagesGrid app — image on a specific image-list item:
+await bp.style.appImagesGridItemUpload(headerId, appId, listItemId, file);
 
 // Artboard new version:
 await bp.style.artboardVersionUpload(headerId, file);
