@@ -8,6 +8,52 @@ The shared CRUD/folder/app/comment/revision/tag/sharing methods are
 documented in [headers.md](headers.md) and [apps.md](apps.md). This page
 covers the style-specific extras.
 
+## Create a style end-to-end (with sizes + front/back images)
+
+The common bulk-import flow: create the header with its fields and size
+range, then upload the front/back attribute images and wait for the server
+to finish processing each one.
+
+```ts
+// 1) resolve the target folder once
+const folder = (await bp.style.folders()).find((f) => f.name === "01 APPAREL");
+
+// 2) create the header — fields are a flat dict of folder field ids
+const style = await bp.style.create(folder!.id, {
+  header_number: "BB-FW26-060",          // ignored if the folder auto-numbers!
+  header_name:   "Strapless Embellished Maxi Dress",
+  season: "FALL", year: "2026", brand: "BRONX BANCO", category: "APPAREL",
+}, {
+  sizes: [                                // full size range (see headers.md)
+    { name: "XS", isSampleSize: true },
+    { name: "S" }, { name: "M" }, { name: "L" },
+  ],
+});
+
+// 3) upload the attribute images, positioned (typed: "front" | "side" | "back")
+const frontId = await bp.style.upload(style.id, { filepath: "/img/front.jpg" }, "front");
+const backId  = await bp.style.upload(style.id, { filepath: "/img/back.jpg" },  "back");
+
+// 4) wait for server-side processing of each image
+for (const id of [frontId, backId]) {
+  if (!id) continue;
+  while (true) {
+    const s = await bp.style.uploadStatus(id);
+    if (s.finished && !s.errorOccurred) break;
+    if (s.finished && s.errorOccurred) throw new Error(`processing failed: ${s.message}`);
+    await new Promise((r) => setTimeout(r, 2_000));
+  }
+}
+```
+
+Notes:
+- `create` returns the created header — `style.id` is the new GUID.
+- **Verify the number stuck** — see the [autonumbering gotcha](headers.md#get--create--update--delete).
+- A missing image file is your call to handle — resolve the path first and
+  skip the `upload` if it doesn't exist (the server won't invent one).
+- `bp.style.upload(headerId, file, position?)` is the attribute image; it's
+  distinct from `artboardVersionUpload` (Artboard app versions, below).
+
 ## Schema lookups
 
 ```ts
