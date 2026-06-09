@@ -50,6 +50,14 @@ await bp.style.deleteHeader(headerId);   // soft delete
 or an `UpdateItem[]` (the API's native `{ id, value }` shape). The
 shorthand is converted via `fieldsToUpdateItems`.
 
+> **Autonumbering gotcha.** If the folder has **auto-generate header
+> number** turned on, the `headerNumber` you pass on `create` is **ignored**
+> — the server assigns its own (e.g. `HL26-0001`). To import your own style
+> numbers, ask the tenant admin to disable autonumbering on the folder
+> first (and, if numbers repeat across seasons/variants, enable "allow
+> duplicate numbers"). The create still succeeds either way; the number is
+> just silently overwritten, so verify one record after a bulk import.
+
 ### Looking up by header number
 
 When you have the human-facing header **number** (e.g. `"T-101"`) rather
@@ -66,6 +74,39 @@ const inFolder = await bp.style.getByNumber("T-101", { folderId });
 
 It's a thin convenience over `list()` with a `header_number` Eq filter —
 reach for `list()` directly if you need more than the first hit.
+
+> **Caveat:** this only works if `header_number` is **filterable** in the
+> folder's search schema (check `folderSearchSchema(folderId)`). Some
+> folders don't index it, in which case the filter returns nothing — fall
+> back to iterating `list()` and matching client-side.
+
+## Sizes and size classes
+
+`create` and `update` take an optional `sizes` array. **Sizes are
+replaced wholesale** — you can't patch a single size; always pass the full
+range. Only `name` is required:
+
+```ts
+await bp.style.create(folderId, fields, {
+  sizes: [
+    { name: "XS", isSampleSize: true },   // mark the sample size
+    { name: "S" },
+    { name: "M" },
+    { name: "L" },
+    // optional per-size fields:
+    // { name: "XL", price: 1.1, currency: "USD", unitOfMeasure: "inch", comments: "..." },
+  ],
+});
+```
+
+| Field | Notes |
+|---|---|
+| `name` | **required** — the size label (`"XS"`, `"M"`, …) |
+| `isSampleSize` | marks this entry as the sample size |
+| `price` / `currency` / `unitOfMeasure` / `comments` | optional per-size metadata |
+
+For block-style **size classes** (a size *set* rather than a flat list),
+pass `sizeClasses` instead — see [block.md](block.md).
 
 ## Folders
 

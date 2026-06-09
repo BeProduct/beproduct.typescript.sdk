@@ -14,6 +14,8 @@ new BeProduct({
   publicApiUrl: "https://developers.beproduct.com",           // optional
   tokenEndpoint: "https://id.winks.io/ids/connect/token",     // optional
   additionalHeaders: { "X-Trace-Id": "abc-123" },             // optional
+  requestTimeoutMs: 60_000,                                   // optional (default 60s)
+  uploadTimeoutMs: 120_000,                                   // optional (default = requestTimeoutMs)
 });
 ```
 
@@ -103,6 +105,32 @@ const bp = new BeProduct({
   },
 });
 ```
+
+### `requestTimeoutMs` / `uploadTimeoutMs`
+
+A single request that stalls past `requestTimeoutMs` is aborted (via
+`AbortController`) and surfaced as a transport error — which the retry
+machinery treats like any other network failure (see
+[Errors & retries](errors-and-retries.md)). Without this a dead/half-open
+connection would hang the call **forever**, since `fetch` has no built-in
+timeout.
+
+- **`requestTimeoutMs`** — applies to regular GET/POST/DELETE **and** the
+  OAuth token refresh. Default **`60_000`** (1 min). Set to `0` to disable.
+- **`uploadTimeoutMs`** — applies to multipart uploads (images, 3D assets).
+  Defaults to `requestTimeoutMs`; bump it when uploading large files.
+
+```ts
+const bp = new BeProduct({
+  // ...
+  requestTimeoutMs: 60_000,    // abort a hung request after 1 min
+  uploadTimeoutMs: 120_000,    // allow longer for big image/3D uploads
+});
+```
+
+> Both are **optional and backward-compatible** — existing code needs no
+> change. The only behavioral shift on upgrade is that a request which used
+> to hang indefinitely now aborts (and retries) after 60s.
 
 ## Inspecting auth state
 

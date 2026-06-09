@@ -9,6 +9,27 @@ npm test             # vitest unit tests
 npm run build        # tsup → dist/{index.js,index.cjs,index.d.ts}
 ```
 
+## Unit tests
+
+`npm test` runs the Vitest unit suite — fully mocked (`fetch` is stubbed),
+no network. Layout under `tests/unit/`:
+
+| File | Covers |
+|---|---|
+| `http.test.ts` | `HttpClient` — URL building, auth header, error mapping, rate-limit parsing, 429 retry/backoff, and **request-timeout abort** (a hung request rejects instead of hanging) |
+| `auth.test.ts` | token refresh + caching |
+| `pagination.test.ts` | `paginate` / `paginateArray` |
+| `helpers.test.ts` | `dictToFilters`, `fieldsToUpdateItems`, parsers |
+| `schemas.test.ts` / `field-values.test.ts` | Zod schema parsing |
+| `resources/style-writes.test.ts` | style create/update/BOM/3D/sample-request endpoints + bodies |
+| `resources/material-writes.test.ts` | material create/update/3D endpoints |
+| `resources/other-writes.test.ts` | color/image/block/etc write endpoints |
+| `resources/uploads-and-lookup.test.ts` | **typed `position` upload** (front/side/back, main/detail), **`appImageGridUpload`**, and **`getByNumber`** (match + null) |
+
+Write tests as `(method) → (URL, HTTP method, body)` assertions against the
+stubbed fetch — see the existing `*-writes.test.ts` files for the pattern.
+Upload tests assert the request URL only (the body is `FormData`).
+
 ## Integration tests
 
 ```bash
