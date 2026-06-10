@@ -73,9 +73,8 @@ depending on the kind of field:
 ## `dictToFilters` — shorthand for plain objects
 
 When your filter set is built from a config / query string, the dict form is
-more convenient than constructing the array by hand. `dictToFilters` mirrors
-the Python SDK's `dict_to_eq_filter_parser` and handles the `■` multi-value
-join for you:
+more convenient than constructing the array by hand. `dictToFilters` handles
+the `■` multi-value join for you:
 
 ```ts
 import { dictToFilters } from "beproduct";
@@ -104,11 +103,10 @@ The value of each entry is interpreted as follows (`src/helpers.ts`):
 | array where any item has `*` | `*` stripped from each, joined with `■`, `operator: "Contains"` |
 | `{ operator, value }` | passed through with that explicit operator |
 
-> **No equivalent of Python's `parse_array_as_or_filter`.** The Python SDK
-> also ships a helper that normalizes an already-built *array* of filter
-> objects (joining any array `value` with `■`). The TS SDK only offers the
-> dict form above — if you build `SearchFilter[]` by hand, join multi-value
-> fields yourself (`values.join("■")`).
+> `dictToFilters` only handles the dict form above. If you build
+> `SearchFilter[]` by hand, join multi-value fields yourself
+> (`values.join("■")`) — there is no helper that normalizes an
+> already-built filter array.
 
 ## Typical patterns
 
