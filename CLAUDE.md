@@ -38,7 +38,18 @@ tests/
 
 - **One resource = one controller**. The Partner API has ~18 controllers; the SDK exposes one resource per controller (`bp.users`, `bp.style`, `bp.material`, etc.). Resources are constructed once on `new BeProduct(...)` and exposed via getters.
 - **Methods are thin**. A method on a resource typically maps 1:1 to an endpoint — no caching, no batching, no business logic. The shape is `async methodName(args): Promise<TypedResponse> { return this.http.get/post(path, args); }`.
-- **Responses validated with zod**. Every method that returns a typed shape parses through `<ResourceSchema>.parse(raw)` before returning. This catches upstream schema drift early and gives consumers a real type, not `any`.
+- **Zod validation is the exception, not the rule.** Only two places validate:
+  `schemas/apps.ts`'s `parseAppData` uses `.parse()` (so it **throws** on drift)
+  and is reached only via `appGetTyped`; `schemas/field-values.ts`'s
+  `parseFieldValue` uses `safeParse` and **returns the raw value unchanged** on
+  mismatch. Every other method casts the response to its declared type without
+  checking it.
+  Consequence worth knowing before you debug a shape problem: **upstream drift
+  does not throw.** The `dataflow.etl` sync path never calls `appGetTyped` (it
+  uses `bp.raw.post`), and header responses go through `parseHeader`/`parseStyle`,
+  which are plain property reads — a renamed or dropped field yields `undefined`,
+  flows onward, and lands as a NULL in the warehouse. That is precisely how the
+  `active` field bug presented: not an error, just quietly missing data.
 - **Pagination via the helper**. Endpoints returning `{ result, total }` should expose both an eager `list(...)` method and a `listIter(...)` returning the async iterator from `pagination.ts`.
 - **No hidden state**. Resources have no mutable state; everything is `readonly`. The HttpClient owns the access-token refresh state.
 
