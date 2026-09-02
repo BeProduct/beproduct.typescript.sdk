@@ -3,6 +3,14 @@ import type { SchemaField, AppPage, UpdateItem, ColorwayInput } from "../schemas
 import { fieldsToUpdateItems, normalizeColorways } from "../schemas/common.js";
 import type { StyleHeader } from "../schemas/style.js";
 import { EntityResource } from "./base.js";
+import {
+  BomVariationSchema,
+  BomVariationMetadataSchema,
+  BomVariationsPageSchemaSchema,
+  type BomVariation,
+  type BomVariationMetadata,
+  type BomVariationsPageSchema,
+} from "../schemas/bom-variations.js";
 
 /** Where a style attribute image sits on the style. */
 export type StyleImagePosition = "front" | "side" | "back";
@@ -20,6 +28,51 @@ export class StyleResource extends EntityResource {
 
   async folderPages(folderId: string): Promise<AppPage[]> {
     return this.http.get(`Style/FolderPages/${folderId}`);
+  }
+
+  /**
+   * List the BOM variations on a `BOMVariations` app.
+   *
+   * The upstream `data` is polymorphic: an array of variation metadata when the
+   * app has variations enabled, and a single object carrying `rows` (the implicit
+   * default variation) when it does not. Both are normalised to an array of
+   * metadata here — rows are never returned, fetch them with
+   * {@link bomVariationGet}.
+   *
+   * CAUTION: upstream, this read materialises the default variation server-side
+   * when the app has `enableBomVariations: false`. Check
+   * {@link bomVariationSchema} first if the caller must not cause a write.
+   */
+  async bomVariationList(headerId: string, appId: string): Promise<BomVariationMetadata[]> {
+    const page = await this.http.get<{ data?: unknown }>("Style/Page", { headerId, pageId: appId });
+    const data = page?.data;
+    if (data == null) return [];
+    const items = Array.isArray(data)
+      ? data
+      // Single-object form: the variation itself, whose metadata may be nested.
+      : [(data as { metadata?: unknown }).metadata ?? data];
+    return items.map((i) => BomVariationMetadataSchema.parse(i));
+  }
+
+  /** Get one BOM variation, with its rows and colour pitches. */
+  async bomVariationGet(
+    headerId: string,
+    appId: string,
+    variationId: string,
+  ): Promise<BomVariation> {
+    const raw = await this.http.get(
+      `Style/${headerId}/PageBomVariation/${appId}/Variation/${variationId}`,
+    );
+    return BomVariationSchema.parse(raw);
+  }
+
+  /**
+   * Page schema for a `BOMVariations` app — `{enableBomVariations, metadata, grid}`.
+   * `metadata` describes variation-level fields, `grid` the row-level ones.
+   */
+  async bomVariationSchema(appId: string): Promise<BomVariationsPageSchema> {
+    const raw = await this.http.get("Style/PageSchema", { pageId: appId });
+    return BomVariationsPageSchemaSchema.parse(raw);
   }
 
   override async get(headerId: string): Promise<StyleHeader> {
