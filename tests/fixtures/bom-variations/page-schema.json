@@ -1,0 +1,24 @@
+{
+  "enableBomVariations": true,
+  "metadata": [
+    { "fieldId": "VariationName", "fieldName": "BOM Variation Name", "fieldType": "Text",
+      "required": true, "properties": { "MaxValueCharacters": 150, "ColumnWidth": 150 } },
+    { "fieldId": "IsDefault", "fieldName": "Default BOM Variation", "fieldType": "Radio",
+      "required": false, "properties": { "DefaultValue": false } },
+    { "fieldId": "SyncColorways", "fieldName": "Use All Style Colorways", "fieldType": "TrueFalse",
+      "required": false, "properties": { "DefaultValue": true } },
+    { "fieldId": "region_3", "fieldName": "Region", "fieldType": "DropDown",
+      "required": false, "properties": { "Choices": [] } }
+  ],
+  "grid": [
+    { "fieldId": "header_number", "fieldName": "Material Number", "fieldType": "Text", "required": false },
+    { "fieldId": "header_name", "fieldName": "Material Name", "fieldType": "Text", "required": false },
+    { "fieldId": "group", "fieldName": "Group", "fieldType": "DropDown", "required": false },
+    { "fieldId": "FolderTypeName", "fieldName": "Type", "fieldType": "DropDown", "required": false },
+    { "fieldId": "Vendor", "fieldName": "Mill / Vendor", "fieldType": "ComboBox", "required": false },
+    { "fieldId": "qty", "fieldName": "Qty", "fieldType": "Decimal", "required": false },
+    { "fieldId": "uom", "fieldName": "UOM", "fieldType": "DropDown", "required": false },
+    { "fieldId": "price", "fieldName": "Price", "fieldType": "Currency", "required": false },
+    { "fieldId": "total", "fieldName": "Total", "fieldType": "FormulaField", "required": false }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "id": "67695975-c08a-463d-a2f6-195523c516af",
+    "variationName": "BOM 02", "isDefault": false, "order": 2,
+    "syncColorways": true, "selectedVariationColorways": [],
+    "sizeClasses": [], "partners": [], "fields": []
+  },
+  "id": "67695975-c08a-463d-a2f6-195523c516af",
+  "createdBy": { "id": "b6e45371-574b-4217-aa76-b9224e96ea46", "name": "oshi" },
+  "createdAt": "2026-07-29T17:44:49.54657Z",
+  "modifiedBy": { "id": "b6e45371-574b-4217-aa76-b9224e96ea46", "name": "oshi" },
+  "modifiedAt": "2026-07-29T17:45:10.582265Z",
+  "rows": [
+    {
+      "rowId": "e11f5174-2020-4310-922d-18006f7ca907",
+      "materialId": "b892649c-e32c-4635-a03e-d0e7be5d2bfb",
+      "isAdHoc": false,
+      "materialNumber": "MAT-THD-0000500",
+      "materialName": "Coats Thread",
+      "folderType": "201864f6-700f-44f3-bcff-5e345cfb21d6",
+      "folderTypeName": "04 Trims",
+      "version": 80,
+      "image": "https://us-stream2.beproduct.com/preview/aaa/bbb/1/0/bbb.jpg?width=600",
+      "sort": 0,
+      "parentRowId": null, "parentId": null, "subAssemblyRowId": null,
+      "group": null,
+      "fields": [
+        { "id": "header_number", "name": "Material Number", "value": "MAT-THD-0000500", "type": "Text", "required": false },
+        { "id": "qty", "name": "Qty", "value": null, "type": "Decimal", "required": false },
+        { "id": "uom", "name": "UOM", "value": "m", "type": "DropDown", "required": false },
+        { "id": "price", "name": "Price", "value": 0.005, "type": "Currency", "required": false },
+        { "id": "total", "name": "Total", "value": 0, "type": "FormulaField", "required": false }
+      ],
+      "colors": [
+        { "colorwayId": "e08f857c-d29e-40f4-8520-77963adad279", "hex": "8d3f2d",
+          "number": "19-1250 TCX", "name": "Picante", "image": null,
+          "materialColorwayId": "7dfcd3db-26d5-48e4-980d-f0bb78eaadd1",
+          "colorReference": "Approved", "colorSourceId": null },
+        { "colorwayId": "6af72f6c-800e-4beb-80da-2a3e19c46795", "hex": "373e4b",
+          "number": "B05", "name": "Faded Navy", "image": null,
+          "materialColorwayId": "b8b606cf-c558-48f9-9e9c-3c3e79011ff2",
+          "colorReference": "Approved", "colorSourceId": null }
+      ]
+    },
+    {
+      "rowId": "9a71eeb8-1111-2222-3333-444455556666",
+      "materialId": null,
+      "isAdHoc": true,
+      "materialNumber": "AD-HOC-1",
+      "materialName": "Ad hoc trim",
+      "folderType": null, "folderTypeName": null, "version": null,
+      "image": null,
+      "sort": 1,
+      "parentRowId": "e11f5174-2020-4310-922d-18006f7ca907",
+      "parentId": null,
+      "subAssemblyRowId": null,
+      "group": "grp-1",
+      "fields": [
+        { "id": "qty", "name": "Qty", "value": 2, "type": "Decimal", "required": false }
+      ],
+      "colors": []
+    }
+  ]
+}

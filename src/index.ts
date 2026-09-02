@@ -21,6 +21,7 @@ export * from "./schemas/tags.js";
 export * from "./schemas/share.js";
 export * from "./schemas/master-data.js";
 export * from "./schemas/field-values.js";
+export * from "./schemas/bom-variations.js";
 
 // Resources
 export { EntityResource, type SearchFilter, type ListOptions } from "./resources/base.js";

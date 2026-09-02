@@ -1,0 +1,17 @@
+{
+  "id": "f7e0ff51-8067-4dcf-96f8-a3d426883172",
+  "headerId": "516d282f-015d-4405-8190-e4ae13d66e7d",
+  "name": "TEST LF BOM",
+  "data": {
+    "id": "b7140508-51d4-4504-97d9-f772d30b9edc",
+    "createdBy": { "id": "cde652b9-0697-493d-a7d8-f1e4642dab47", "name": "BeSupport" },
+    "createdAt": "2026-09-02T13:22:09.996262Z",
+    "modifiedBy": { "id": "cde652b9-0697-493d-a7d8-f1e4642dab47", "name": "BeSupport" },
+    "modifiedAt": "2026-09-02T13:22:09.996262Z",
+    "rows": []
+  },
+  "createdBy": { "id": "cde652b9-0697-493d-a7d8-f1e4642dab47", "name": "BeSupport" },
+  "createdAt": "2026-09-02T13:23:44.5618379Z",
+  "modifiedBy": { "id": "cde652b9-0697-493d-a7d8-f1e4642dab47", "name": "BeSupport" },
+  "modifiedAt": "2026-09-02T13:23:44.5618379Z"
+}

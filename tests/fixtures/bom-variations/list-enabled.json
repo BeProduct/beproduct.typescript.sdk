@@ -1,0 +1,17 @@
+{
+  "id": "48838f65-8ba8-4d14-8727-18a60581d09c",
+  "headerId": "516d282f-015d-4405-8190-e4ae13d66e7d",
+  "name": "Product BOM",
+  "data": [
+    { "id": "ea18ccf1-a541-4ec5-b2cf-35c13cd213c8", "variationName": "Design BOM",
+      "isDefault": true, "order": 1, "syncColorways": true,
+      "selectedVariationColorways": [], "sizeClasses": [], "partners": [], "fields": [] },
+    { "id": "4662a1e3-af27-4324-a054-545c8a561c64", "variationName": "Production BOM",
+      "isDefault": false, "order": 1, "syncColorways": true,
+      "selectedVariationColorways": [], "sizeClasses": [], "partners": [], "fields": [] }
+  ],
+  "createdBy": { "id": "b6e45371-574b-4217-aa76-b9224e96ea46", "name": "oshi" },
+  "createdAt": "2026-07-29T17:44:42.287355Z",
+  "modifiedBy": { "id": "b6e45371-574b-4217-aa76-b9224e96ea46", "name": "oshi" },
+  "modifiedAt": "2026-07-29T17:44:49.583106Z"
+}
