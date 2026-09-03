@@ -10,7 +10,10 @@ import {
   type BomVariation,
   type BomVariationMetadata,
   type BomVariationsPageSchema,
+  type BomVariationCreateRequest,
+  type BomVariationUpdateRequest,
 } from "../schemas/bom-variations.js";
+import type { MessageResponse } from "../schemas/common.js";
 
 /** Where a style attribute image sits on the style. */
 export type StyleImagePosition = "front" | "side" | "back";
@@ -73,6 +76,73 @@ export class StyleResource extends EntityResource {
   async bomVariationSchema(appId: string): Promise<BomVariationsPageSchema> {
     const raw = await this.http.get("Style/PageSchema", { pageId: appId });
     return BomVariationsPageSchemaSchema.parse(raw);
+  }
+
+  /**
+   * Create a BOM variation. Requires variations to be enabled on the app and
+   * fails once its `MaxBomVariations` limit is reached. Returns the new variation.
+   *
+   * @example
+   *   await client.style.bomVariationCreate(headerId, appId, {
+   *     variationName: "Production BOM",
+   *     rows: [{ materialId, rowFields: [{ id: "qty", value: 2 }] }],
+   *   });
+   */
+  async bomVariationCreate(
+    headerId: string,
+    appId: string,
+    request: BomVariationCreateRequest,
+  ): Promise<BomVariation> {
+    const raw = await this.http.post(
+      `Style/${headerId}/PageBomVariation/${appId}/CreateVariation`,
+      request,
+    );
+    return BomVariationSchema.parse(raw);
+  }
+
+  /**
+   * Incrementally update one BOM variation — rows, colour pitches, metadata.
+   * Only what is present in the request changes. Server rules worth knowing:
+   * deleting a `rowId` the server does not know is a 400; `UserLabel` and
+   * `FormulaField` grid fields are read-only; the default variation cannot be
+   * un-defaulted (make another one the default instead). Returns the updated
+   * variation.
+   */
+  async bomVariationUpdate(
+    headerId: string,
+    appId: string,
+    variationId: string,
+    request: BomVariationUpdateRequest,
+  ): Promise<BomVariation> {
+    const raw = await this.http.post(
+      `Style/${headerId}/PageBomVariation/${appId}/Variation/${variationId}/Update`,
+      request,
+    );
+    return BomVariationSchema.parse(raw);
+  }
+
+  /** Clear every row of a variation; its metadata is kept. Returns the reset variation. */
+  async bomVariationReset(
+    headerId: string,
+    appId: string,
+    variationId: string,
+  ): Promise<BomVariation> {
+    const raw = await this.http.post(
+      `Style/${headerId}/PageBomVariation/${appId}/Variation/${variationId}/Reset`,
+      {},
+    );
+    return BomVariationSchema.parse(raw);
+  }
+
+  /** Permanently delete a variation. The default variation cannot be deleted. */
+  async bomVariationDelete(
+    headerId: string,
+    appId: string,
+    variationId: string,
+  ): Promise<MessageResponse> {
+    return this.http.delete(
+      `Style/${headerId}/PageBomVariation/${appId}/Variation/${variationId}`,
+    );
   }
 
   override async get(headerId: string): Promise<StyleHeader> {

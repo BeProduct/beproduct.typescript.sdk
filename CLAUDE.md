@@ -38,12 +38,16 @@ tests/
 
 - **One resource = one controller**. The Partner API has ~18 controllers; the SDK exposes one resource per controller (`bp.users`, `bp.style`, `bp.material`, etc.). Resources are constructed once on `new BeProduct(...)` and exposed via getters.
 - **Methods are thin**. A method on a resource typically maps 1:1 to an endpoint — no caching, no batching, no business logic. The shape is `async methodName(args): Promise<TypedResponse> { return this.http.get/post(path, args); }`.
-- **Zod validation is the exception, not the rule.** Only two places validate:
+- **Zod validation is the exception, not the rule.** Three places validate:
   `schemas/apps.ts`'s `parseAppData` uses `.parse()` (so it **throws** on drift)
   and is reached only via `appGetTyped`; `schemas/field-values.ts`'s
   `parseFieldValue` uses `safeParse` and **returns the raw value unchanged** on
-  mismatch. Every other method casts the response to its declared type without
-  checking it.
+  mismatch; and the **BOM-variation family** on `StyleResource`
+  (`bomVariationList/Get/Schema/Create/Update/Reset`) uses `.parse()` and
+  **throws** — deliberately, because the ETL consumes these payloads directly
+  and classifies a `ZodError` as a bad record rather than a transport failure.
+  Every other method casts the response to its declared type without checking
+  it.
   Consequence worth knowing before you debug a shape problem: **upstream drift
   does not throw.** The `dataflow.etl` sync path never calls `appGetTyped` (it
   uses `bp.raw.post`), and header responses go through `parseHeader`/`parseStyle`,

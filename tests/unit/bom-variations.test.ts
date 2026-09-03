@@ -17,10 +17,10 @@ describe("BOM variation schemas", () => {
     expect(v.rows).toHaveLength(2);
 
     const first = v.rows[0]!;
-    expect(first.materialNumber).toBe("MAT-THD-0000500");
+    expect(first.materialNumber).toBe("MAT-0001");
     expect(first.isAdHoc).toBe(false);
     expect(first.colors).toHaveLength(2);
-    expect(first.colors[0]!.materialColorwayId).toBe("7dfcd3db-26d5-48e4-980d-f0bb78eaadd1");
+    expect(first.colors[0]!.materialColorwayId).toBe("00000000-0000-4000-8000-000000000007");
     expect(first.colors[0]!.colorSourceId).toBeNull();
     expect(first.fields.find((f) => f.id === "uom")?.value).toBe("m");
 
@@ -29,7 +29,7 @@ describe("BOM variation schemas", () => {
     expect(adhoc.isAdHoc).toBe(true);
     expect(adhoc.materialId).toBeNull();
     expect(adhoc.version).toBeNull();
-    expect(adhoc.parentRowId).toBe("e11f5174-2020-4310-922d-18006f7ca907");
+    expect(adhoc.parentRowId).toBe("00000000-0000-4000-8000-000000000015");
     expect(adhoc.group).toBe("grp-1");
   });
 
@@ -80,7 +80,7 @@ describe("StyleResource BOM variation methods", () => {
     const out = await style.bomVariationList("h1", "a2");
 
     expect(out).toHaveLength(1);
-    expect(out[0]!.id).toBe("b7140508-51d4-4504-97d9-f772d30b9edc");
+    expect(out[0]!.id).toBe("00000000-0000-4000-8000-000000000010");
   });
 
   it("returns an empty list when data is null", async () => {
@@ -104,5 +104,67 @@ describe("StyleResource BOM variation methods", () => {
 
     expect(s.enableBomVariations).toBe(true);
     expect(calls[0]).toEqual({ path: "Style/PageSchema", query: { pageId: "a1" } });
+  });
+});
+
+// ── writes ──────────────────────────────────────────
+
+function styleRecordingWrites(response: unknown) {
+  const calls: Array<{ method: string; path: string; body?: unknown; query?: Record<string, unknown> }> = [];
+  const http = {
+    get: async (path: string, query?: Record<string, unknown>) => { calls.push({ method: "GET", path, query }); return response; },
+    post: async (path: string, body: unknown, query?: Record<string, unknown>) => { calls.push({ method: "POST", path, body, query }); return response; },
+    delete: async (path: string, query?: Record<string, unknown>) => { calls.push({ method: "DELETE", path, query }); return response; },
+  } as unknown as HttpClient;
+  return { style: new StyleResource(http), calls };
+}
+
+describe("StyleResource BOM variation writes", () => {
+  it("creates a variation with POST …/CreateVariation and returns the parsed echo", async () => {
+    const { style, calls } = styleRecordingWrites(fx("variation-with-pitches.json"));
+    const req = {
+      variationName: "Production BOM",
+      isDefault: false,
+      syncColorways: true,
+      rows: [{ materialId: "m1", rowFields: [{ id: "qty", value: 2 }] }],
+    };
+    const v = await style.bomVariationCreate("h1", "a1", req);
+
+    expect(calls).toEqual([{ method: "POST", path: "Style/h1/PageBomVariation/a1/CreateVariation", body: req, query: undefined }]);
+    expect(v.rows).toHaveLength(2);
+  });
+
+  it("updates a variation with POST …/Variation/{id}/Update, passing the request body verbatim", async () => {
+    const { style, calls } = styleRecordingWrites(fx("variation-with-pitches.json"));
+    const req = {
+      rows: [
+        { rowId: "r1", rowFields: [{ id: "qty", value: 3 }], colorUpdate: [{ colorwayId: "cw1", hex: "112233" }] },
+        { rowId: "r2", deleteRow: true },
+      ],
+      selectedVariationColorwaysUpdate: { add: ["cw9"], remove: [] },
+    };
+    await style.bomVariationUpdate("h1", "a1", "v1", req);
+
+    expect(calls[0]!.method).toBe("POST");
+    expect(calls[0]!.path).toBe("Style/h1/PageBomVariation/a1/Variation/v1/Update");
+    expect(calls[0]!.body).toEqual(req);
+  });
+
+  it("resets a variation with a body-less POST …/Variation/{id}/Reset", async () => {
+    const { style, calls } = styleRecordingWrites(fx("variation-with-pitches.json"));
+    const v = await style.bomVariationReset("h1", "a1", "v1");
+
+    expect(calls[0]!.method).toBe("POST");
+    expect(calls[0]!.path).toBe("Style/h1/PageBomVariation/a1/Variation/v1/Reset");
+    expect(calls[0]!.body).toEqual({}); // same convention as appReset
+    expect(v.id).toBe("00000000-0000-4000-8000-000000000005");
+  });
+
+  it("deletes a variation with DELETE …/Variation/{id} and returns the message response", async () => {
+    const { style, calls } = styleRecordingWrites({ error: false, message: "Variation deleted" });
+    const res = await style.bomVariationDelete("h1", "a1", "v1");
+
+    expect(calls).toEqual([{ method: "DELETE", path: "Style/h1/PageBomVariation/a1/Variation/v1", query: undefined }]);
+    expect(res).toEqual({ error: false, message: "Variation deleted" });
   });
 });

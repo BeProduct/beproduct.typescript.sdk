@@ -139,6 +139,64 @@ await bp.style.bomDetailsUpdate(headerId, appId, materialDetails);
 
 For typed BOM data on read, use [`appGetTyped(headerId, appId, "BOM")`](apps.md#fetching-one-app).
 
+## BOM variations
+
+A `BOMVariations` app holds several parallel BOMs on one style (e.g. "Design
+BOM" and "Production BOM"), each with its own rows, colour pitches and
+variation-level metadata. Style only.
+
+```ts
+// Field definitions: `metadata` (variation-level) and `grid` (row-level)
+const schema = await bp.style.bomVariationSchema(appId);
+schema.enableBomVariations; // false = the app behaves as a single, implicit default variation
+
+// List the variations (metadata only, no rows) …
+const variations = await bp.style.bomVariationList(headerId, appId);
+// … then fetch one in full
+const v = await bp.style.bomVariationGet(headerId, appId, variations[0].id);
+v.rows[0].fields; // [{ id, name, value, type, required }] — a list, not keys on the row
+v.rows[0].colors; // colour pitches: { colorwayId, hex, number, name, materialColorwayId, colorReference, … }
+
+// Create
+const created = await bp.style.bomVariationCreate(headerId, appId, {
+  variationName: "Production BOM",
+  syncColorways: true,
+  rows: [{ materialId, rowFields: [{ id: "qty", value: 2 }, { id: "uom", value: "m" }] }],
+});
+
+// Incremental update: add a row, edit one, delete one, patch a pitch
+await bp.style.bomVariationUpdate(headerId, appId, created.id, {
+  rows: [
+    { materialId: otherMaterialId, rowFields: [{ id: "qty", value: 1 }] },       // add (no rowId)
+    { rowId, rowFields: [{ id: "qty", value: 3 }],
+      colorUpdate: [{ colorwayId, materialColorwayId, hex: "8d3f2d" }] },          // edit + pitch
+    { rowId: staleRowId, deleteRow: true },                                       // delete
+  ],
+  selectedVariationColorwaysUpdate: { add: [colorwayId] },
+});
+
+// Clear rows (metadata kept) / delete the variation
+await bp.style.bomVariationReset(headerId, appId, created.id);
+await bp.style.bomVariationDelete(headerId, appId, created.id);
+```
+
+Server rules you will otherwise meet as 400s: `deleteRow` on an unknown
+`rowId` is rejected; `UserLabel` and `FormulaField` grid fields are read-only;
+the default variation cannot be un-defaulted or deleted (make another one the
+default first); Create requires `enableBomVariations` and respects
+`MaxBomVariations`.
+
+Two caveats inherited from the API:
+
+- `bomVariationList` on an app with `enableBomVariations: false` **creates**
+  the implicit default variation server-side on first read. Check
+  `bomVariationSchema` first if your caller must not write.
+- These pages are Postgres-managed upstream and are **invisible to
+  `sync/syncpages`**; there is no bulk read.
+
+Unlike most of the SDK, the BOM-variation methods validate responses with zod
+and throw on shape drift — see `CLAUDE.md`.
+
 ## Sets
 
 `Sets` is an app type that links a parent style to one or more child

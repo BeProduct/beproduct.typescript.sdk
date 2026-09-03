@@ -4,17 +4,18 @@ import { getClient, DOMAIN, SKIP } from "./setup.js";
 /**
  * BOM variations, live and read-only.
  *
- * Gated on bebrands the same way the shape suite is gated on ltd3: the ids
- * below are hardcoded tenant ids, so the suite is meaningless elsewhere.
+ * Needs a tenant with a BOMVariations app that has variations enabled. Point
+ * the suite at one with three env vars (all required, or the suite skips):
+ *   BEPRODUCT_BV_FOLDER_ID  style folder id
+ *   BEPRODUCT_BV_HEADER_ID  a style in that folder with >= 1 variation
+ *   BEPRODUCT_BV_APP_ID     the BOMVariations app id (enableBomVariations: true)
  */
-const SKIP_BEBRANDS = SKIP || DOMAIN !== "bebrands";
+const FOLDER = process.env.BEPRODUCT_BV_FOLDER_ID ?? "";
+const HEADER = process.env.BEPRODUCT_BV_HEADER_ID ?? "";
+const APP = process.env.BEPRODUCT_BV_APP_ID ?? "";
+const SKIP_BV = SKIP || !(FOLDER && HEADER && APP);
 
-// Verified fixtures on the bebrands tenant.
-const FOLDER = "6345e5e2-6cb5-42d5-a5ee-18b36e565a33";
-const HEADER = "516d282f-015d-4405-8190-e4ae13d66e7d";
-const APP = "48838f65-8ba8-4d14-8727-18a60581d09c";
-
-describe.skipIf(SKIP_BEBRANDS)("Integration — BOM variations (bebrands, read-only)", () => {
+describe.skipIf(SKIP_BV)(`Integration — BOM variations (${DOMAIN}, read-only)`, () => {
   it("reads the two-field-set page schema", async () => {
     const schema = await getClient().style.bomVariationSchema(APP);
     expect(schema.enableBomVariations).toBe(true);
