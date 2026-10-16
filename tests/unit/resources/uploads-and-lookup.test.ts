@@ -154,3 +154,15 @@ describe("#4 getByNumber", () => {
     expect(header).toBeNull();
   });
 });
+
+describe("BOM variation row image upload", () => {
+  beforeEach(() => vi.restoreAllMocks());
+
+  it("style.bomVariationRowImageUpload — posts to the row Image/Upload path and returns the image id", async () => {
+    mockFetch({ imageId: "img-9" });
+    const id = await makeClient().style.bomVariationRowImageUpload(HEADER, APP, "v1", "r1", pngFile());
+
+    expect(lastUrl()).toContain(`Style/${HEADER}/PageBomVariation/${APP}/Variation/v1/Row/r1/Image/Upload`);
+    expect(id).toBe("img-9");
+  });
+});

@@ -41,6 +41,15 @@ describe("BOM variation schemas", () => {
     expect(m.selectedVariationColorways).toEqual([]);
   });
 
+  it("keeps imageId on a row and leaves it undefined when absent", () => {
+    const raw = fx("variation-with-pitches.json");
+    raw.rows[1].imageId = "f-1";
+    delete raw.rows[0].imageId;
+    const v = BomVariationSchema.parse(raw);
+    expect(v.rows[1]!.imageId).toBe("f-1");
+    expect(v.rows[0]!.imageId).toBeUndefined();
+  });
+
   it("parses the two-field-set PageSchema and keeps the tenant metadata field", () => {
     const s = BomVariationsPageSchemaSchema.parse(fx("page-schema.json"));
     expect(s.enableBomVariations).toBe(true);
@@ -110,11 +119,12 @@ describe("StyleResource BOM variation methods", () => {
 // ── writes ──────────────────────────────────────────
 
 function styleRecordingWrites(response: unknown) {
-  const calls: Array<{ method: string; path: string; body?: unknown; query?: Record<string, unknown> }> = [];
+  const calls: Array<{ method: string; path: string; body?: unknown; query?: Record<string, unknown>; file?: unknown }> = [];
   const http = {
     get: async (path: string, query?: Record<string, unknown>) => { calls.push({ method: "GET", path, query }); return response; },
     post: async (path: string, body: unknown, query?: Record<string, unknown>) => { calls.push({ method: "POST", path, body, query }); return response; },
     delete: async (path: string, query?: Record<string, unknown>) => { calls.push({ method: "DELETE", path, query }); return response; },
+    uploadFile: async (path: string, file: unknown, query?: Record<string, unknown>) => { calls.push({ method: "UPLOAD", path, query, file }); return "img-1"; },
   } as unknown as HttpClient;
   return { style: new StyleResource(http), calls };
 }
@@ -166,5 +176,30 @@ describe("StyleResource BOM variation writes", () => {
 
     expect(calls).toEqual([{ method: "DELETE", path: "Style/h1/PageBomVariation/a1/Variation/v1", query: undefined }]);
     expect(res).toEqual({ error: false, message: "Variation deleted" });
+  });
+
+  it("uploads a row image with POST …/Row/{rowId}/Image/Upload and returns the image id", async () => {
+    const { style, calls } = styleRecordingWrites(fx("variation-with-pitches.json"));
+    const id = await style.bomVariationRowImageUpload("h1", "a1", "v1", "r1", { buffer: Buffer.from([1]), filename: "a.jpg" });
+
+    expect(calls[0]!.method).toBe("UPLOAD");
+    expect(calls[0]!.path).toBe("Style/h1/PageBomVariation/a1/Variation/v1/Row/r1/Image/Upload");
+    expect(calls[0]!.query).toBeUndefined();
+    expect(id).toBe("img-1");
+  });
+
+  it("forwards uploadId as a query parameter", async () => {
+    const { style, calls } = styleRecordingWrites(fx("variation-with-pitches.json"));
+    await style.bomVariationRowImageUpload("h1", "a1", "v1", "r1", { buffer: Buffer.from([1]), filename: "a.jpg" }, "u1");
+
+    expect(calls[0]!.query).toEqual({ uploadId: "u1" });
+  });
+
+  it("clears a row image with DELETE …/Row/{rowId}/Image and returns the parsed variation", async () => {
+    const { style, calls } = styleRecordingWrites(fx("variation-with-pitches.json"));
+    const v = await style.bomVariationRowImageClear("h1", "a1", "v1", "r1");
+
+    expect(calls[0]).toEqual({ method: "DELETE", path: "Style/h1/PageBomVariation/a1/Variation/v1/Row/r1/Image", query: undefined });
+    expect(v.rows).toHaveLength(2);
   });
 });

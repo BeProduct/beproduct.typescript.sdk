@@ -28,6 +28,7 @@ export const BomVariationRowSchema = z.object({
   folderTypeName: z.string().nullable().optional(),
   version: z.number().nullable().optional(),
   image: z.string().nullable().optional(),
+  imageId: z.string().nullable().optional(),
   sort: z.number().default(0),
   parentRowId: z.string().nullable().optional(),
   parentId: z.string().nullable().optional(),

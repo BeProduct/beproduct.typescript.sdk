@@ -145,6 +145,56 @@ export class StyleResource extends EntityResource {
     );
   }
 
+  /**
+   * Upload an image for one BOM variation row. The row must be an ad hoc row
+   * (`isAdHoc: true`) at the root of the variation — material-linked rows and
+   * sub-assembly child rows are a 400. An upload replaces any existing row
+   * image. Returns the image id; poll it with {@link imageProcessingStatus},
+   * then re-read the variation — the result shows up as `BomVariationRow.image`
+   * (preview URL) and `BomVariationRow.imageId`. Per-colorway pitch images are
+   * not covered. Pass `uploadId` to reference an already-uploaded file instead
+   * of sending the bytes.
+   *
+   * @example
+   *   const imageId = await client.style.bomVariationRowImageUpload(
+   *     headerId, appId, variationId, rowId, { filepath: "swatch.jpg" },
+   *   );
+   */
+  async bomVariationRowImageUpload(
+    headerId: string,
+    appId: string,
+    variationId: string,
+    rowId: string,
+    file: FileInput,
+    uploadId?: string,
+  ): Promise<string | null> {
+    return this.http.uploadFile(
+      `Style/${headerId}/PageBomVariation/${appId}/Variation/${variationId}/Row/${rowId}/Image/Upload`,
+      file,
+      uploadId ? { uploadId } : undefined,
+    );
+  }
+
+  /**
+   * Remove the image from one ad hoc BOM variation row (ad hoc root rows only;
+   * other rows are a 400). Returns the updated variation, where the row's
+   * `image` / `imageId` are cleared. Per-colorway pitch images are not covered.
+   *
+   * @example
+   *   await client.style.bomVariationRowImageClear(headerId, appId, variationId, rowId);
+   */
+  async bomVariationRowImageClear(
+    headerId: string,
+    appId: string,
+    variationId: string,
+    rowId: string,
+  ): Promise<BomVariation> {
+    const raw = await this.http.delete(
+      `Style/${headerId}/PageBomVariation/${appId}/Variation/${variationId}/Row/${rowId}/Image`,
+    );
+    return BomVariationSchema.parse(raw);
+  }
+
   override async get(headerId: string): Promise<StyleHeader> {
     return this.http.get(`Style/Header/${headerId}`);
   }
