@@ -78,7 +78,7 @@ const WRITE = process.env.BEPRODUCT_BV_WRITE === "1";
 const MATERIAL_ID = process.env.BEPRODUCT_BV_MATERIAL_ID ?? "";
 
 describe.skipIf(SKIP_BV || !WRITE)(`Integration — BOM variation row image (${DOMAIN}, writes)`, () => {
-  const UPLOAD_TIMEOUT = 120_000;
+  const UPLOAD_TIMEOUT = 180_000;
   let variationId: string;
   let rowId: string;
 
@@ -101,22 +101,26 @@ describe.skipIf(SKIP_BV || !WRITE)(`Integration — BOM variation row image (${D
     const first = await client.style.bomVariationRowImageUpload(HEADER, APP, variationId, rowId, {
       filepath: ASSET_1KB,
     });
+    expect(first).toBeTruthy();
     expect(await waitForUpload(client, first!)).toBe(true);
     let row = (await client.style.bomVariationGet(HEADER, APP, variationId)).rows.find(
       (r) => r.rowId === rowId,
     )!;
     expect(row.image).toBeTruthy();
     expect(row.imageId).toBeTruthy();
+    expect(row.imageId).toBe(first);
     const firstImageId = row.imageId;
 
     const second = await client.style.bomVariationRowImageUpload(HEADER, APP, variationId, rowId, {
       filepath: ASSET_1KB,
     });
+    expect(second).toBeTruthy();
     expect(await waitForUpload(client, second!)).toBe(true);
     const v = await client.style.bomVariationGet(HEADER, APP, variationId);
     expect(v.rows).toHaveLength(1); // replace did not add a row
     row = v.rows[0]!;
     expect(row.imageId).not.toBe(firstImageId); // replaced
+    expect(row.imageId).toBe(second);
 
     const cleared = await client.style.bomVariationRowImageClear(HEADER, APP, variationId, rowId);
     expect(cleared.rows[0]!.image).toBeNull();

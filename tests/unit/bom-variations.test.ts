@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   BomVariationSchema,
+  BomVariationRowSchema,
   BomVariationMetadataSchema,
   BomVariationsPageSchemaSchema,
 } from "../../src/schemas/bom-variations.js";
@@ -45,6 +46,7 @@ describe("BOM variation schemas", () => {
     const raw = fx("variation-with-pitches.json");
     raw.rows[1].imageId = "f-1";
     delete raw.rows[0].imageId;
+    expect(BomVariationRowSchema.shape).toHaveProperty("imageId");
     const v = BomVariationSchema.parse(raw);
     expect(v.rows[1]!.imageId).toBe("f-1");
     expect(v.rows[0]!.imageId).toBeUndefined();

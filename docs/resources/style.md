@@ -176,6 +176,7 @@ await bp.style.bomVariationUpdate(headerId, appId, created.id, {
 });
 
 // Put an image on an ad hoc row (root rows only; replaces any existing image)
+const adHocRowId = created.rows.find(r => r.isAdHoc)!.rowId; // rows created without materialId are ad hoc
 const imageId = await bp.style.bomVariationRowImageUpload(headerId, appId, created.id, adHocRowId, { filepath: "swatch.jpg" });
 // … poll bp.style.imageProcessingStatus(imageId) until finished, then re-read:
 const row = (await bp.style.bomVariationGet(headerId, appId, created.id)).rows.find(r => r.rowId === adHocRowId);
