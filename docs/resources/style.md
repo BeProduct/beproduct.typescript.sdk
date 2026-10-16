@@ -175,6 +175,14 @@ await bp.style.bomVariationUpdate(headerId, appId, created.id, {
   selectedVariationColorwaysUpdate: { add: [colorwayId] },
 });
 
+// Put an image on an ad hoc row (root rows only; replaces any existing image)
+const imageId = await bp.style.bomVariationRowImageUpload(headerId, appId, created.id, adHocRowId, { filepath: "swatch.jpg" });
+// … poll bp.style.imageProcessingStatus(imageId) until finished, then re-read:
+const row = (await bp.style.bomVariationGet(headerId, appId, created.id)).rows.find(r => r.rowId === adHocRowId);
+row.image;   // protected preview URL
+row.imageId; // the image's file id — compare before re-uploading to avoid duplicates
+await bp.style.bomVariationRowImageClear(headerId, appId, created.id, adHocRowId);
+
 // Clear rows (metadata kept) / delete the variation
 await bp.style.bomVariationReset(headerId, appId, created.id);
 await bp.style.bomVariationDelete(headerId, appId, created.id);
@@ -184,7 +192,9 @@ Server rules you will otherwise meet as 400s: `deleteRow` on an unknown
 `rowId` is rejected; `UserLabel` and `FormulaField` grid fields are read-only;
 the default variation cannot be un-defaulted or deleted (make another one the
 default first); Create requires `enableBomVariations` and respects
-`MaxBomVariations`.
+`MaxBomVariations`; a row image on a material-linked row or a sub-assembly
+child row is a 400, and per-colorway pitch images are not supported by this
+flow.
 
 Two caveats inherited from the API:
 
