@@ -1,5 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { getClient, DOMAIN, SKIP } from "./setup.js";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { BeProductError } from "../../src/index.js";
+import { getClient, DOMAIN, SKIP, ASSET_1KB } from "./setup.js";
+import { waitForUpload } from "./helpers.js";
 
 /**
  * BOM variations, live and read-only.
@@ -63,4 +65,81 @@ describe.skipIf(SKIP_BV)(`Integration — BOM variations (${DOMAIN}, read-only)`
       expect(sample).toHaveProperty("value");
     }
   });
+});
+
+/**
+ * BOM variation ad hoc row image, live and WRITING. Creates a throwaway
+ * variation (deleted in afterAll) so nothing pre-existing is touched. Needs the
+ * three BEPRODUCT_BV_* vars above plus an explicit opt-in:
+ *   BEPRODUCT_BV_WRITE=1
+ * Optional: BEPRODUCT_BV_MATERIAL_ID (a material id) enables the 400 check.
+ */
+const WRITE = process.env.BEPRODUCT_BV_WRITE === "1";
+const MATERIAL_ID = process.env.BEPRODUCT_BV_MATERIAL_ID ?? "";
+
+describe.skipIf(SKIP_BV || !WRITE)(`Integration — BOM variation row image (${DOMAIN}, writes)`, () => {
+  const UPLOAD_TIMEOUT = 120_000;
+  let variationId: string;
+  let rowId: string;
+
+  beforeAll(async () => {
+    // a throwaway variation with one ad hoc row (no materialId)
+    const v = await getClient().style.bomVariationCreate(HEADER, APP, {
+      variationName: `sdk-row-image-${Date.now()}`,
+      rows: [{ rowFields: [] }],
+    });
+    variationId = v.id;
+    rowId = v.rows[0]!.rowId;
+  });
+
+  afterAll(async () => {
+    if (variationId) await getClient().style.bomVariationDelete(HEADER, APP, variationId);
+  });
+
+  it("uploads, reads back, replaces, clears and stays idempotent", async () => {
+    const client = getClient();
+    const first = await client.style.bomVariationRowImageUpload(HEADER, APP, variationId, rowId, {
+      filepath: ASSET_1KB,
+    });
+    expect(await waitForUpload(client, first!)).toBe(true);
+    let row = (await client.style.bomVariationGet(HEADER, APP, variationId)).rows.find(
+      (r) => r.rowId === rowId,
+    )!;
+    expect(row.image).toBeTruthy();
+    expect(row.imageId).toBeTruthy();
+    const firstImageId = row.imageId;
+
+    const second = await client.style.bomVariationRowImageUpload(HEADER, APP, variationId, rowId, {
+      filepath: ASSET_1KB,
+    });
+    expect(await waitForUpload(client, second!)).toBe(true);
+    const v = await client.style.bomVariationGet(HEADER, APP, variationId);
+    expect(v.rows).toHaveLength(1); // replace did not add a row
+    row = v.rows[0]!;
+    expect(row.imageId).not.toBe(firstImageId); // replaced
+
+    const cleared = await client.style.bomVariationRowImageClear(HEADER, APP, variationId, rowId);
+    expect(cleared.rows[0]!.image).toBeNull();
+    expect(cleared.rows[0]!.imageId).toBeNull();
+    const clearedAgain = await client.style.bomVariationRowImageClear(HEADER, APP, variationId, rowId); // idempotent
+    expect(clearedAgain.rows[0]!.imageId).toBeNull();
+  }, UPLOAD_TIMEOUT);
+
+  // Needs a real material id from the tenant; skipped when BEPRODUCT_BV_MATERIAL_ID is unset.
+  it.skipIf(!MATERIAL_ID)("rejects a material-linked row with a 400", async () => {
+    const client = getClient();
+    const v = await client.style.bomVariationCreate(HEADER, APP, {
+      variationName: `sdk-row-image-material-${Date.now()}`,
+      rows: [{ materialId: MATERIAL_ID, rowFields: [] }],
+    });
+    try {
+      const err = await client.style
+        .bomVariationRowImageUpload(HEADER, APP, v.id, v.rows[0]!.rowId, { filepath: ASSET_1KB })
+        .catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(BeProductError);
+      expect((err as BeProductError).statusCode).toBe(400);
+    } finally {
+      await client.style.bomVariationDelete(HEADER, APP, v.id);
+    }
+  }, UPLOAD_TIMEOUT);
 });
