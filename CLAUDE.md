@@ -67,7 +67,7 @@ BEPRODUCT_INTEGRATION=1 npm run test:integration  # hits live ltd3
 ```
 
 `tests/integration/setup.ts` reads `.env` for `BEPRODUCT_CLIENT_ID` /
-`BEPRODUCT_CLIENT_SECRET` / `BEPRODUCT_REFRESH_TOKEN` / `BEPRODUCT_COMPANY_DOMAIN`.
+`BEPRODUCT_CLIENT_SECRET` / `BEPRODUCT_REFRESH_TOKEN` / `BEPRODUCT_COMPANY_DOMAIN` (and the optional `BEPRODUCT_PUBLIC_API_URL` / `BEPRODUCT_TOKEN_ENDPOINT` overrides, see `.env.example`).
 
 ## Things to avoid
 

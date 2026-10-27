@@ -17,6 +17,8 @@ const HEADER = process.env.BEPRODUCT_BV_HEADER_ID ?? "";
 const APP = process.env.BEPRODUCT_BV_APP_ID ?? "";
 const SKIP_BV = SKIP || !(FOLDER && HEADER && APP);
 
+const LIST_TIMEOUT = 120_000;
+
 describe.skipIf(SKIP_BV)(`Integration — BOM variations (${DOMAIN}, read-only)`, () => {
   it("reads the two-field-set page schema", async () => {
     const schema = await getClient().style.bomVariationSchema(APP);
@@ -34,7 +36,7 @@ describe.skipIf(SKIP_BV)(`Integration — BOM variations (${DOMAIN}, read-only)`
       expect(v.id).toBe(item.id);
       expect(Array.isArray(v.rows)).toBe(true);
     }
-  });
+  }, LIST_TIMEOUT);
 
   it("can tell a variations-disabled app apart without listing it", async () => {
     // Listing a disabled app would create a default variation server-side, so
@@ -73,6 +75,8 @@ describe.skipIf(SKIP_BV)(`Integration — BOM variations (${DOMAIN}, read-only)`
  * three BEPRODUCT_BV_* vars above plus an explicit opt-in:
  *   BEPRODUCT_BV_WRITE=1
  * Optional: BEPRODUCT_BV_MATERIAL_ID (a material id) enables the 400 check.
+ * The app needs a free slot below MaxBomVariations and the style at least one
+ * visible colorway.
  */
 const WRITE = process.env.BEPRODUCT_BV_WRITE === "1";
 const MATERIAL_ID = process.env.BEPRODUCT_BV_MATERIAL_ID ?? "";
@@ -84,11 +88,17 @@ describe.skipIf(SKIP_BV || !WRITE)(`Integration — BOM variation row image (${D
 
   beforeAll(async () => {
     // a throwaway variation with one ad hoc row (no materialId)
-    const v = await getClient().style.bomVariationCreate(HEADER, APP, {
-      variationName: `sdk-row-image-${Date.now()}`,
-      syncColorways: true,
-      rows: [{ rowFields: [] }],
-    });
+    let v;
+    try {
+      v = await getClient().style.bomVariationCreate(HEADER, APP, {
+        variationName: `sdk-row-image-${Date.now()}`,
+        syncColorways: true,
+        rows: [{ rowFields: [] }],
+      });
+    } catch (e) {
+      const err = e as { responseBody?: unknown; message?: string };
+      throw new Error(`bomVariationCreate failed: ${err.responseBody ?? err.message}`);
+    }
     variationId = v.id;
     rowId = v.rows[0]!.rowId;
   });

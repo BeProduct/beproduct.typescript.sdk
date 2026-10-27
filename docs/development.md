@@ -45,6 +45,9 @@ BEPRODUCT_REFRESH_TOKEN=...
 BEPRODUCT_COMPANY_DOMAIN=bebrands
 ```
 
+`setup.ts` also honours the optional `BEPRODUCT_PUBLIC_API_URL` and
+`BEPRODUCT_TOKEN_ENDPOINT` overrides (see `.env.example`).
+
 The integration suite hits real endpoints — read-only by design but mind
 the rate limit if you run it in a tight loop.
 

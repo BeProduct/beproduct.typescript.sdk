@@ -152,9 +152,9 @@ export class StyleResource extends EntityResource {
    * image. Returns the image id; poll it with {@link imageProcessingStatus},
    * then re-read the variation — the result shows up as `BomVariationRow.image`
    * (preview URL) and `BomVariationRow.imageId`. Per-colorway pitch images use
-   * {@link bomVariationPitchImageUpload}. The server resolves `uploadId` to a previously uploaded file
-   * and ignores the multipart part, but `file` is still required by the SDK's
-   * upload layer.
+   * {@link bomVariationPitchImageUpload}. The server resolves `uploadId` to a
+   * previously uploaded file and ignores the multipart part, but `file` is
+   * still required by the SDK's upload layer.
    *
    * @example
    *   const imageId = await client.style.bomVariationRowImageUpload(

@@ -1,4 +1,5 @@
 import type { BeProduct } from "../../src/index.js";
+import { BeProductError } from "../../src/index.js";
 import type { Fixtures } from "./fixtures.js";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -57,8 +58,13 @@ export async function waitForUpload(
   intervalMs = 3000,
 ): Promise<boolean> {
   for (let attempt = 1; attempt <= attempts; attempt++) {
-    const { finished, errorOccurred } = await client.style.uploadStatus(uploadId);
-    if (finished) return !errorOccurred;
+    try {
+      const { finished, errorOccurred } = await client.style.uploadStatus(uploadId);
+      if (finished) return !errorOccurred;
+    } catch (e) {
+      // the server briefly returns 404 while it rewrites the status entry
+      if (!(e instanceof BeProductError && e.statusCode === 404)) throw e;
+    }
     if (attempt < attempts) await sleep(intervalMs);
   }
   return false;

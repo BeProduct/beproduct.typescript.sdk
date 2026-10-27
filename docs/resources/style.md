@@ -186,7 +186,7 @@ await bp.style.bomVariationRowImageClear(headerId, appId, created.id, adHocRowId
 
 // Put an image on one colorway pitch of an ad hoc row (the pitch must exist; replaces any existing image)
 const pitchImageId = await bp.style.bomVariationPitchImageUpload(headerId, appId, created.id, adHocRowId, colorwayId, { filepath: "pitch.jpg" });
-// … poll bp.style.imageProcessingStatus(pitchImageId), then re-read: row.colors.find(c => c.colorwayId === colorwayId).imageId
+// … poll bp.style.imageProcessingStatus(pitchImageId), then re-read: row.colors.find(c => c.colorwayId.toLowerCase() === colorwayId.toLowerCase()).imageId
 await bp.style.bomVariationPitchImageClear(headerId, appId, created.id, adHocRowId, colorwayId);
 
 // Clear rows (metadata kept) / delete the variation
