@@ -21,6 +21,8 @@ export const testConfig: BeProductConfig = {
   refreshToken: requireEnv("BEPRODUCT_REFRESH_TOKEN"),
   // Optional: point the suite at a non-default Public API host (e.g. a local build behind a tunnel).
   publicApiUrl: process.env.BEPRODUCT_PUBLIC_API_URL || undefined,
+  // Optional: exchange the refresh token at a non-default identity server (e.g. QA).
+  tokenEndpoint: process.env.BEPRODUCT_TOKEN_ENDPOINT || undefined,
 };
 
 let _client: BeProduct | null = null;
