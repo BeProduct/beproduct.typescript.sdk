@@ -8,6 +8,7 @@ export const BomVariationColorSchema = z.object({
   number: z.string().nullable().optional(),
   name: z.string().nullable().optional(),
   image: z.unknown().nullable().optional(),
+  imageId: z.string().nullable().optional(),
   materialColorwayId: z.string().nullable().optional(),
   colorReference: z.string().nullable().optional(),
   colorSourceId: z.string().nullable().optional(),

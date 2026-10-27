@@ -49,6 +49,7 @@ multipart fields differ. Common ones:
 | `bp.block.sizeClass3dAssetUpload(headerId, sizeClass, file)` | Block 3D asset per size class |
 | `bp.style.appAttachmentsUpload(headerId, appId, file)` (and `.material`, etc.) | Attach file to an app page |
 | `bp.style.bomVariationRowImageUpload(headerId, appId, variationId, rowId, file)` | Image on an ad hoc BOM variation row (replaces the existing one; clear with `bomVariationRowImageClear`) |
+| `bp.style.bomVariationPitchImageUpload(headerId, appId, variationId, rowId, colorwayId, file)` | Image on one colorway pitch of an ad hoc BOM variation row (replaces the existing one; clear with `bomVariationPitchImageClear`) |
 | `bp.style.appListUpload(headerId, appId, listItemId, file)` | Image inside a list-row (List / List-Form / List-Grid app) |
 | `bp.style.appImageFormUpload(headerId, appId, file)` | Image inside an ImagesForm app |
 | `bp.style.appImageGridUpload(headerId, appId, file)` | Image inside an ImagesGrid app (same endpoint as the form variant) |

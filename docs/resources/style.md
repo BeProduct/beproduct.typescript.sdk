@@ -184,6 +184,11 @@ row.image;   // protected preview URL
 row.imageId; // the image's file id — compare before re-uploading to avoid duplicates
 await bp.style.bomVariationRowImageClear(headerId, appId, created.id, adHocRowId);
 
+// Put an image on one colorway pitch of an ad hoc row (the pitch must exist; replaces any existing image)
+const pitchImageId = await bp.style.bomVariationPitchImageUpload(headerId, appId, created.id, adHocRowId, colorwayId, { filepath: "pitch.jpg" });
+// … poll bp.style.imageProcessingStatus(pitchImageId), then re-read: row.colors.find(c => c.colorwayId === colorwayId).imageId
+await bp.style.bomVariationPitchImageClear(headerId, appId, created.id, adHocRowId, colorwayId);
+
 // Clear rows (metadata kept) / delete the variation
 await bp.style.bomVariationReset(headerId, appId, created.id);
 await bp.style.bomVariationDelete(headerId, appId, created.id);
@@ -194,8 +199,7 @@ Server rules you will otherwise meet as 400s: `deleteRow` on an unknown
 the default variation cannot be un-defaulted or deleted (make another one the
 default first); Create requires `enableBomVariations` and respects
 `MaxBomVariations`; a row image on a material-linked row or a sub-assembly
-child row is a 400, and per-colorway pitch images are not supported by this
-flow.
+child row is a 400, and a pitch image needs an existing pitch on an ad hoc row (404 otherwise).
 
 Two caveats inherited from the API:
 

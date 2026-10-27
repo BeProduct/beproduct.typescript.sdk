@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
   BomVariationSchema,
   BomVariationRowSchema,
+  BomVariationColorSchema,
   BomVariationMetadataSchema,
   BomVariationsPageSchemaSchema,
 } from "../../src/schemas/bom-variations.js";
@@ -50,6 +51,12 @@ describe("BOM variation schemas", () => {
     const v = BomVariationSchema.parse(raw);
     expect(v.rows[1]!.imageId).toBe("f-1");
     expect(v.rows[0]!.imageId).toBeUndefined();
+  });
+
+  it("keeps imageId on a pitch colour", () => {
+    expect(BomVariationColorSchema.shape).toHaveProperty("imageId");
+    const c = BomVariationColorSchema.parse({ colorwayId: "c1", imageId: "f-1" });
+    expect(c.imageId).toBe("f-1");
   });
 
   it("parses the two-field-set PageSchema and keeps the tenant metadata field", () => {
@@ -202,6 +209,31 @@ describe("StyleResource BOM variation writes", () => {
     const v = await style.bomVariationRowImageClear("h1", "a1", "v1", "r1");
 
     expect(calls[0]).toEqual({ method: "DELETE", path: "Style/h1/PageBomVariation/a1/Variation/v1/Row/r1/Image", query: undefined });
+    expect(v.rows).toHaveLength(2);
+  });
+
+  it("uploads a pitch image with POST …/Row/{rowId}/Pitch/{colorwayId}/Image/Upload and returns the image id", async () => {
+    const { style, calls } = styleRecordingWrites(fx("variation-with-pitches.json"));
+    const id = await style.bomVariationPitchImageUpload("h1", "a1", "v1", "r1", "c1", { buffer: Buffer.from([1]), filename: "a.jpg" });
+
+    expect(calls[0]!.method).toBe("UPLOAD");
+    expect(calls[0]!.path).toBe("Style/h1/PageBomVariation/a1/Variation/v1/Row/r1/Pitch/c1/Image/Upload");
+    expect(calls[0]!.query).toBeUndefined();
+    expect(id).toBe("img-1");
+  });
+
+  it("forwards uploadId for a pitch image upload", async () => {
+    const { style, calls } = styleRecordingWrites(fx("variation-with-pitches.json"));
+    await style.bomVariationPitchImageUpload("h1", "a1", "v1", "r1", "c1", { buffer: Buffer.from([1]), filename: "a.jpg" }, "u1");
+
+    expect(calls[0]!.query).toEqual({ uploadId: "u1" });
+  });
+
+  it("clears a pitch image with DELETE …/Row/{rowId}/Pitch/{colorwayId}/Image and returns the parsed variation", async () => {
+    const { style, calls } = styleRecordingWrites(fx("variation-with-pitches.json"));
+    const v = await style.bomVariationPitchImageClear("h1", "a1", "v1", "r1", "c1");
+
+    expect(calls[0]).toEqual({ method: "DELETE", path: "Style/h1/PageBomVariation/a1/Variation/v1/Row/r1/Pitch/c1/Image", query: undefined });
     expect(v.rows).toHaveLength(2);
   });
 });

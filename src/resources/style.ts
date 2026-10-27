@@ -151,8 +151,8 @@ export class StyleResource extends EntityResource {
    * sub-assembly child rows are a 400. An upload replaces any existing row
    * image. Returns the image id; poll it with {@link imageProcessingStatus},
    * then re-read the variation — the result shows up as `BomVariationRow.image`
-   * (preview URL) and `BomVariationRow.imageId`. Per-colorway pitch images are
-   * not covered. The server resolves `uploadId` to a previously uploaded file
+   * (preview URL) and `BomVariationRow.imageId`. Per-colorway pitch images use
+   * {@link bomVariationPitchImageUpload}. The server resolves `uploadId` to a previously uploaded file
    * and ignores the multipart part, but `file` is still required by the SDK's
    * upload layer.
    *
@@ -179,7 +179,7 @@ export class StyleResource extends EntityResource {
   /**
    * Remove the image from one ad hoc BOM variation row (ad hoc root rows only;
    * other rows are a 400). Returns the updated variation, where the row's
-   * `image` / `imageId` are cleared. Per-colorway pitch images are not covered.
+   * `image` / `imageId` are cleared. Pitch images use {@link bomVariationPitchImageClear}.
    *
    * @example
    *   await client.style.bomVariationRowImageClear(headerId, appId, variationId, rowId);
@@ -192,6 +192,58 @@ export class StyleResource extends EntityResource {
   ): Promise<BomVariation> {
     const raw = await this.http.delete(
       `Style/${headerId}/PageBomVariation/${appId}/Variation/${variationId}/Row/${rowId}/Image`,
+    );
+    return BomVariationSchema.parse(raw);
+  }
+
+  /**
+   * Upload an image for one colorway pitch of a BOM variation row. The row must
+   * be an ad hoc row (`isAdHoc: true`) at the root of the variation and the
+   * pitch must already exist (404 otherwise). An upload replaces any existing
+   * pitch image. Returns the image id; poll it with {@link imageProcessingStatus},
+   * then re-read the variation — the result shows up as
+   * `BomVariationColor.image` (preview URL) and `BomVariationColor.imageId`.
+   * The server resolves `uploadId` to a previously uploaded file and ignores
+   * the multipart part, but `file` is still required by the SDK's upload layer.
+   *
+   * @example
+   *   const imageId = await client.style.bomVariationPitchImageUpload(
+   *     headerId, appId, variationId, rowId, colorwayId, { filepath: "pitch.jpg" },
+   *   );
+   */
+  async bomVariationPitchImageUpload(
+    headerId: string,
+    appId: string,
+    variationId: string,
+    rowId: string,
+    colorwayId: string,
+    file: FileInput,
+    uploadId?: string,
+  ): Promise<string | null> {
+    return this.http.uploadFile(
+      `Style/${headerId}/PageBomVariation/${appId}/Variation/${variationId}/Row/${rowId}/Pitch/${colorwayId}/Image/Upload`,
+      file,
+      uploadId ? { uploadId } : undefined,
+    );
+  }
+
+  /**
+   * Remove the image from one colorway pitch of an ad hoc BOM variation row
+   * (ad hoc root rows only; the pitch must exist). Returns the updated
+   * variation, where the pitch's `image` / `imageId` are cleared.
+   *
+   * @example
+   *   await client.style.bomVariationPitchImageClear(headerId, appId, variationId, rowId, colorwayId);
+   */
+  async bomVariationPitchImageClear(
+    headerId: string,
+    appId: string,
+    variationId: string,
+    rowId: string,
+    colorwayId: string,
+  ): Promise<BomVariation> {
+    const raw = await this.http.delete(
+      `Style/${headerId}/PageBomVariation/${appId}/Variation/${variationId}/Row/${rowId}/Pitch/${colorwayId}/Image`,
     );
     return BomVariationSchema.parse(raw);
   }

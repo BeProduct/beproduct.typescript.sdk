@@ -165,4 +165,12 @@ describe("BOM variation row image upload", () => {
     expect(lastUrl()).toContain(`Style/${HEADER}/PageBomVariation/${APP}/Variation/v1/Row/r1/Image/Upload`);
     expect(id).toBe("img-9");
   });
+
+  it("style.bomVariationPitchImageUpload — posts to the pitch Image/Upload path and returns the image id", async () => {
+    mockFetch({ imageId: "img-9" });
+    const id = await makeClient().style.bomVariationPitchImageUpload(HEADER, APP, "v1", "r1", "c1", pngFile());
+
+    expect(lastUrl()).toContain(`Style/${HEADER}/PageBomVariation/${APP}/Variation/v1/Row/r1/Pitch/c1/Image/Upload`);
+    expect(id).toBe("img-9");
+  });
 });

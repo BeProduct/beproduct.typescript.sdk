@@ -43,7 +43,7 @@ tests/
   and is reached only via `appGetTyped`; `schemas/field-values.ts`'s
   `parseFieldValue` uses `safeParse` and **returns the raw value unchanged** on
   mismatch; and the **BOM-variation family** on `StyleResource`
-  (`bomVariationList/Get/Schema/Create/Update/Reset/RowImageClear`) uses `.parse()` and
+  (`bomVariationList/Get/Schema/Create/Update/Reset/RowImageClear/PitchImageClear`) uses `.parse()` and
   **throws** — deliberately, because the ETL consumes these payloads directly
   and classifies a `ZodError` as a bad record rather than a transport failure.
   Every other method casts the response to its declared type without checking
