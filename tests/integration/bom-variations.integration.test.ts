@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { BeProductError } from "../../src/index.js";
+import { BeProductError, type BomVariation } from "../../src/index.js";
 import { getClient, DOMAIN, SKIP, ASSET_1KB } from "./setup.js";
 import { waitForUpload } from "./helpers.js";
 
@@ -86,6 +86,7 @@ describe.skipIf(SKIP_BV || !WRITE)(`Integration — BOM variation row image (${D
     // a throwaway variation with one ad hoc row (no materialId)
     const v = await getClient().style.bomVariationCreate(HEADER, APP, {
       variationName: `sdk-row-image-${Date.now()}`,
+      syncColorways: true,
       rows: [{ rowFields: [] }],
     });
     variationId = v.id;
@@ -127,6 +128,28 @@ describe.skipIf(SKIP_BV || !WRITE)(`Integration — BOM variation row image (${D
     expect(cleared.rows[0]!.imageId).toBeNull();
     const clearedAgain = await client.style.bomVariationRowImageClear(HEADER, APP, variationId, rowId); // idempotent
     expect(clearedAgain.rows[0]!.imageId).toBeNull();
+  }, UPLOAD_TIMEOUT);
+
+  it("uploads, replaces, keeps on edit, clears a pitch image and 404s without a pitch", async () => {
+    const client = getClient();
+    const colorwayId = (await client.style.get(HEADER)).colorways?.find(c => !c.hideColorway)?.id;
+    expect(colorwayId).toBeTruthy();
+    const pitch = (v: BomVariation) => v.rows.find(r => r.rowId === rowId)!.colors.find(c => c.colorwayId?.toLowerCase() === colorwayId!.toLowerCase())!;
+    await client.style.bomVariationUpdate(HEADER, APP, variationId, { rows: [{ rowId, colorUpdate: [{ colorwayId: colorwayId!, hex: "8d3f2d" }] }] });
+    const first = await client.style.bomVariationPitchImageUpload(HEADER, APP, variationId, rowId, colorwayId!, { filepath: ASSET_1KB });
+    expect(first).toBeTruthy(); expect(await waitForUpload(client, first!)).toBe(true);
+    let p = pitch(await client.style.bomVariationGet(HEADER, APP, variationId));
+    expect(p.image).toBeTruthy(); expect(p.imageId).toBe(first);
+    const second = await client.style.bomVariationPitchImageUpload(HEADER, APP, variationId, rowId, colorwayId!, { filepath: ASSET_1KB });
+    expect(second).toBeTruthy(); expect(await waitForUpload(client, second!)).toBe(true);
+    p = pitch(await client.style.bomVariationGet(HEADER, APP, variationId)); expect(p.imageId).toBe(second);
+    const edited = await client.style.bomVariationUpdate(HEADER, APP, variationId, { rows: [{ rowId, colorUpdate: [{ colorwayId: colorwayId!, name: "renamed" }] }] });
+    expect(pitch(edited).imageId).toBe(second); expect(pitch(edited).name).toBe("renamed");
+    const cleared = await client.style.bomVariationPitchImageClear(HEADER, APP, variationId, rowId, colorwayId!);
+    expect(pitch(cleared).image).toBeNull(); expect(pitch(cleared).imageId).toBeNull(); expect(pitch(cleared).hex).toBe("8d3f2d");
+    expect(pitch(await client.style.bomVariationPitchImageClear(HEADER, APP, variationId, rowId, colorwayId!)).imageId).toBeNull();
+    const err = await client.style.bomVariationPitchImageUpload(HEADER, APP, variationId, rowId, "00000000-0000-0000-0000-000000000001", { filepath: ASSET_1KB }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(BeProductError); expect((err as BeProductError).statusCode).toBe(404);
   }, UPLOAD_TIMEOUT);
 
   // Needs a real material id from the tenant; skipped when BEPRODUCT_BV_MATERIAL_ID is unset.
