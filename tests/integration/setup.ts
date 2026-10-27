@@ -19,6 +19,8 @@ export const testConfig: BeProductConfig = {
   clientSecret: requireEnv("BEPRODUCT_CLIENT_SECRET"),
   companyDomain: DOMAIN,
   refreshToken: requireEnv("BEPRODUCT_REFRESH_TOKEN"),
+  // Optional: point the suite at a non-default Public API host (e.g. a local build behind a tunnel).
+  publicApiUrl: process.env.BEPRODUCT_PUBLIC_API_URL || undefined,
 };
 
 let _client: BeProduct | null = null;
