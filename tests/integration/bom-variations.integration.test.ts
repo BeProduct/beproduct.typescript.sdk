@@ -83,6 +83,8 @@ const MATERIAL_ID = process.env.BEPRODUCT_BV_MATERIAL_ID ?? "";
 
 describe.skipIf(SKIP_BV || !WRITE)(`Integration — BOM variation row image (${DOMAIN}, writes)`, () => {
   const UPLOAD_TIMEOUT = 180_000;
+  // Creating/deleting a variation is a full-page write; a cold API can take longer than vitest's 10s hook default.
+  const HOOK_TIMEOUT = 60_000;
   let variationId: string;
   let rowId: string;
 
@@ -101,11 +103,11 @@ describe.skipIf(SKIP_BV || !WRITE)(`Integration — BOM variation row image (${D
     }
     variationId = v.id;
     rowId = v.rows[0]!.rowId;
-  });
+  }, HOOK_TIMEOUT);
 
   afterAll(async () => {
     if (variationId) await getClient().style.bomVariationDelete(HEADER, APP, variationId);
-  });
+  }, HOOK_TIMEOUT);
 
   it("uploads, reads back, replaces, clears and stays idempotent", async () => {
     const client = getClient();
@@ -149,14 +151,15 @@ describe.skipIf(SKIP_BV || !WRITE)(`Integration — BOM variation row image (${D
     const first = await client.style.bomVariationPitchImageUpload(HEADER, APP, variationId, rowId, colorwayId!, { filepath: ASSET_1KB });
     expect(first).toBeTruthy(); expect(await waitForUpload(client, first!)).toBe(true);
     let p = pitch(await client.style.bomVariationGet(HEADER, APP, variationId));
-    expect(p.image).toBeTruthy(); expect(p.imageId).toBe(first);
+    expect(p.image).toBeTruthy(); expect(p.imageId).toBe(first); expect(p.hex).toBe("8d3f2d"); // upload keeps the colour
     const second = await client.style.bomVariationPitchImageUpload(HEADER, APP, variationId, rowId, colorwayId!, { filepath: ASSET_1KB });
     expect(second).toBeTruthy(); expect(await waitForUpload(client, second!)).toBe(true);
     p = pitch(await client.style.bomVariationGet(HEADER, APP, variationId)); expect(p.imageId).toBe(second);
     const edited = await client.style.bomVariationUpdate(HEADER, APP, variationId, { rows: [{ rowId, colorUpdate: [{ colorwayId: colorwayId!, name: "renamed" }] }] });
     expect(pitch(edited).imageId).toBe(second); expect(pitch(edited).name).toBe("renamed");
     const cleared = await client.style.bomVariationPitchImageClear(HEADER, APP, variationId, rowId, colorwayId!);
-    expect(pitch(cleared).image).toBeNull(); expect(pitch(cleared).imageId).toBeNull(); expect(pitch(cleared).hex).toBe("8d3f2d");
+    // a name-only colorUpdate redefines the colour (hex is not carried, only the image is), so the cell to survive the clear is the renamed one
+    expect(pitch(cleared).image).toBeNull(); expect(pitch(cleared).imageId).toBeNull(); expect(pitch(cleared).name).toBe("renamed");
     expect(pitch(await client.style.bomVariationPitchImageClear(HEADER, APP, variationId, rowId, colorwayId!)).imageId).toBeNull();
     const err = await client.style.bomVariationPitchImageUpload(HEADER, APP, variationId, rowId, "00000000-0000-0000-0000-000000000001", { filepath: ASSET_1KB }).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(BeProductError); expect((err as BeProductError).statusCode).toBe(404);
