@@ -40,7 +40,14 @@ const roles = await bp.user.roleList();
 
 const role = await bp.user.roleGet(userId);
 // → UserRole — the role currently assigned to this user
+
+const perms = await bp.user.rolePermissions(roleId);
+// → RolePermissions: { Style: { Full: true, View: true, AiWorkflow: false, ... }, ... }
 ```
+
+`rolePermissions` returns module → flag → boolean. Both key sets are
+open-ended: each module has its own flags (`Directory.Invite`,
+`Tracking.Setup`, `Style.TryOn`), and new ones appear without notice.
 
 There's no SDK method to assign a role today; create / change role in
 the BeProduct UI or via `bp.raw` if needed.
