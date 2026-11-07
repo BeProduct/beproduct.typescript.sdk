@@ -44,6 +44,8 @@ export const FolderRoleSchema = z.object({
   roleDescription: z.string().nullable().optional(),
   roleType: z.string().nullable().optional(),
   selected: z.boolean(),
+  /** The folder's own permission for this role; null/absent = the role's module default applies. */
+  folderPermission: z.object({ full: z.boolean(), view: z.boolean() }).nullable().optional(),
   appPermissions: z.array(z.object({
     appId: z.string(),
     appName: z.string().nullable().optional(),
