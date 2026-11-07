@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import type { RolePermissions, UserModel, UserRole } from "../schemas/users.js";
+import type { FolderRole, RolePermissions, UserModel, UserRole } from "../schemas/users.js";
 
 export class UserResource {
   constructor(private readonly http: HttpClient) {}
@@ -35,5 +35,10 @@ export class UserResource {
   /** Module → permission → allowed, e.g. `{ Style: { View: true, Delete: false } }`. */
   async rolePermissions(roleId: string): Promise<RolePermissions> {
     return this.http.get(`Users/Roles/${roleId}/Permissions`);
+  }
+
+  /** Roles available to a folder; `selected` marks the ones assigned, with per-app access. Admin only. */
+  async folderRoles(folderId: string): Promise<FolderRole[]> {
+    return this.http.get(`Users/Roles/Folder/${folderId}`);
   }
 }

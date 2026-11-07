@@ -45,6 +45,12 @@ const perms = await bp.user.rolePermissions(roleId);
 // → RolePermissions: { Style: { Full: true, View: true, AiWorkflow: false, ... }, ... }
 ```
 
+`folderRoles(folderId)` (admin only) lists the roles a folder can hold.
+`selected` marks the assigned ones, which also carry `appPermissions`:
+one entry per app in the folder with `rulesSet` = `no_access`,
+`read_only`, `read_write`, `full_access`, or `null` when never set (the UI
+then derives it from the folder permissions).
+
 `rolePermissions` returns module → flag → boolean. Both key sets are
 open-ended: each module has its own flags (`Directory.Invite`,
 `Tracking.Setup`, `Style.TryOn`), and new ones appear without notice.

@@ -36,3 +36,19 @@ export type UserRole = z.infer<typeof UserRoleSchema>;
  */
 export const RolePermissionsSchema = z.record(z.string(), z.record(z.string(), z.boolean()));
 export type RolePermissions = z.infer<typeof RolePermissionsSchema>;
+
+/** GET Users/Roles/Folder/{folderId}. `appPermissions` is filled only for selected roles. */
+export const FolderRoleSchema = z.object({
+  id: z.string(),
+  roleName: z.string().nullable().optional(),
+  roleDescription: z.string().nullable().optional(),
+  roleType: z.string().nullable().optional(),
+  selected: z.boolean(),
+  appPermissions: z.array(z.object({
+    appId: z.string(),
+    appName: z.string().nullable().optional(),
+    /** no_access | read_only | read_write | full_access; null = not set, the UI derives it from folder permissions. */
+    rulesSet: z.string().nullable().optional(),
+  })),
+});
+export type FolderRole = z.infer<typeof FolderRoleSchema>;
