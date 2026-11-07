@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import type { UserModel, UserRole } from "../schemas/users.js";
+import type { RolePermissions, UserModel, UserRole } from "../schemas/users.js";
 
 export class UserResource {
   constructor(private readonly http: HttpClient) {}
@@ -30,5 +30,10 @@ export class UserResource {
 
   async roleGet(userId: string): Promise<UserRole> {
     return this.http.get(`Users/${userId}/Role`);
+  }
+
+  /** Module → permission → allowed, e.g. `{ Style: { View: true, Delete: false } }`. */
+  async rolePermissions(roleId: string): Promise<RolePermissions> {
+    return this.http.get(`Users/Roles/${roleId}/Permissions`);
   }
 }

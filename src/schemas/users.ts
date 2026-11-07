@@ -28,3 +28,11 @@ export const UserRoleSchema = z.object({
   active: z.boolean().optional(),
 });
 export type UserRole = z.infer<typeof UserRoleSchema>;
+
+/**
+ * GET Users/Roles/{roleId}/Permissions. Keys are open-ended on both levels:
+ * modules ("Style", "Tracking", ...) and flags ("Full", "View", "AiWorkflow", ...)
+ * differ per module and grow over time.
+ */
+export const RolePermissionsSchema = z.record(z.string(), z.record(z.string(), z.boolean()));
+export type RolePermissions = z.infer<typeof RolePermissionsSchema>;

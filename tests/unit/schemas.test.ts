@@ -21,7 +21,7 @@ import {
 } from "../../src/schemas/apps.js";
 import { TrackingPlanSchema, PlanTimelineSchema, PlanProgressSchema } from "../../src/schemas/tracking.js";
 import { DirectoryCompanySchema, ContactSchema } from "../../src/schemas/directory.js";
-import { UserModelSchema, UserRoleSchema } from "../../src/schemas/users.js";
+import { RolePermissionsSchema, UserModelSchema, UserRoleSchema } from "../../src/schemas/users.js";
 import { DataTableResultSchema, DataTableRowResultSchema } from "../../src/schemas/data-tables.js";
 import { MasterDataResultSchema } from "../../src/schemas/master-data.js";
 import { TagSchema } from "../../src/schemas/tags.js";
@@ -297,6 +297,16 @@ describe("Other domain schemas", () => {
 
   it("UserRole", () => {
     UserRoleSchema.parse({ id: "r1", roleName: "Designer", roleDescription: "Design team", roleType: "Internal", isAdmin: false, active: true });
+  });
+
+  it("RolePermissions: modules carry different flag sets", () => {
+    const p = RolePermissionsSchema.parse({
+      Style: { Full: true, View: true, AiWorkflow: false, TryOn: false, Changelog: true },
+      Directory: { Full: true, View: true, Invite: true },
+      Assets: { Full: false, View: false, Create: false, Modify: false, Delete: false },
+    });
+    expect(p.Style.AiWorkflow).toBe(false);
+    expect(() => RolePermissionsSchema.parse({ Style: { View: "yes" } })).toThrow();
   });
 
   it("DataTableResult", () => {
